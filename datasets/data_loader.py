@@ -42,7 +42,7 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size):
 
     train_loader, val_loader = data.BucketIterator.splits(datasets=(train_dataset, val_dataset),
                                                           batch_sizes=(train_batch_size, val_batch_size),
-                                                          repeat=False)
+                                                          repeat=False, sort=False)
 
     datasets = (train_dataset, val_dataset)
     data_loaders = (train_loader, val_loader)
