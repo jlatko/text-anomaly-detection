@@ -1,0 +1,1 @@
+this is a folder for the data, but anythin else than this should be in gitignore
