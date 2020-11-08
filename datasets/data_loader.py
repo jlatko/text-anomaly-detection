@@ -33,15 +33,12 @@ def init_data_loading():
 
     utterance_field.build_vocab(train_dataset, val_dataset, vectors=vec)
 
-    print(utterance_field.vocab.vectors[utterance_field.vocab.stoi['the']])
+    # print(utterance_field.vocab.vectors[utterance_field.vocab.stoi['the']])
 
     train_loader, val_loader = data.BucketIterator.splits(datasets=(train_dataset, val_dataset),
                                                           batch_sizes=(BATCH_SIZE, BATCH_SIZE),
                                                           repeat=False)
 
-    batch = next(iter(train_loader))  # BucketIterator return a batch object
-    train_batch_it = BatchGenerator(train_loader, 'utterance')
-    # print(next(iter(train_batch_it)))
     datasets = (train_dataset, val_dataset)
     data_loaders = (train_loader, val_loader)
     return datasets, data_loaders, utterance_field
