@@ -130,3 +130,6 @@ dmypy.json
 
 .idea
 data
+
+.DS_Store
+.vector_cache/

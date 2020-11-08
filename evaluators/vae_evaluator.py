@@ -1,11 +1,16 @@
 
 class VAEEvaluator:
     def __init__(self):
-        self.score = 0
+        self.reset()
 
-    def update(self, x, x_pred, loss):
-        # TODO: what about z?
-        raise NotImplementedError
+    def reset(self):
+        self.score = 0
+        self.kl_loss = 0
+        self.recon_loss = 0
+
+
+    def update(self, recon_loss, kl_loss, loss):
+        pass
 
     def change_name(self):
         # TODO: some function that returns 
