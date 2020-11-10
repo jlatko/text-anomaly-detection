@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from itertools import chain
 
+from utils.model_utils import to_gpu
+
 
 class RNN_VAE(nn.Module):
     """
@@ -15,6 +17,7 @@ class RNN_VAE(nn.Module):
 
     def __init__(self, n_vocab, h_dim, z_dim, p_word_dropout=0.3,
                  unk_idx=0, pad_idx=1, start_idx=2, eos_idx=3, max_sent_len=15,
+                 use_input_embeddings=True,
                  pretrained_embeddings=None, freeze_embeddings=False, gpu=False):
         super(RNN_VAE, self).__init__()
 
@@ -28,24 +31,28 @@ class RNN_VAE(nn.Module):
         self.h_dim = h_dim
         self.z_dim = z_dim
         self.p_word_dropout = p_word_dropout
+        self.use_input_embeddings = use_input_embeddings # in case we go for sentence embeddings
 
         self.gpu = gpu
 
         """
         Word embeddings layer
         """
-        if pretrained_embeddings is None:
-            self.emb_dim = h_dim
-            self.word_emb = nn.Embedding(n_vocab, h_dim, self.PAD_IDX)
+        if self.use_input_embeddings:
+            if pretrained_embeddings is None:
+                self.emb_dim = h_dim
+                self.word_emb = nn.Embedding(n_vocab, h_dim, self.PAD_IDX)
+            else:
+                self.emb_dim = pretrained_embeddings.size(1)
+                self.word_emb = nn.Embedding(n_vocab, self.emb_dim, self.PAD_IDX)
+
+                # Set pretrained embeddings
+                self.word_emb.weight.data.copy_(pretrained_embeddings)
+
+                if freeze_embeddings:
+                    self.word_emb.weight.requires_grad = False
         else:
-            self.emb_dim = pretrained_embeddings.size(1)
-            self.word_emb = nn.Embedding(n_vocab, self.emb_dim, self.PAD_IDX)
-
-            # Set pretrained embeddings
-            self.word_emb.weight.data.copy_(pretrained_embeddings)
-
-            if freeze_embeddings:
-                self.word_emb.weight.requires_grad = False
+            raise NotImplementedError('not supported yet')
 
         """
         Encoder is GRU with FC layers connected to last hidden unit
@@ -108,7 +115,7 @@ class RNN_VAE(nn.Module):
         Reparameterization trick: z = mu + std*eps; eps ~ N(0, I)
         """
         eps = Variable(torch.randn(self.z_dim))
-        eps = eps.cuda() if self.gpu else eps
+        eps = to_gpu(eps)
         return mu + torch.exp(logvar/2) * eps
 
     def sample_z_prior(self, mbsize):
@@ -116,14 +123,13 @@ class RNN_VAE(nn.Module):
         Sample z ~ p(z) = N(0, I)
         """
         z = Variable(torch.randn(mbsize, self.z_dim))
-        z = z.cuda() if self.gpu else z
-        return z
+        return to_gpu(z)
 
     def forward_decoder(self, inputs, z):
         """
         Inputs must be embeddings: seq_len x mbsize
         """
-        dec_inputs = self.word_dropout(inputs)
+        dec_inputs = self.word_dropout(inputs) if self.training else inputs
 
         # Forward
         seq_len = dec_inputs.size(0)
@@ -142,28 +148,22 @@ class RNN_VAE(nn.Module):
 
         return y
 
-    def forward(self, sentence, use_c_prior=True):
+    def forward(self, sentence):
         """
         Params:
         -------
         sentence: sequence of word indices.
-        use_c_prior: whether to sample `c` from prior or from `discriminator`.
 
         Returns:
         --------
         recon_loss: reconstruction loss of VAE.
         kl_loss: KL-div loss of VAE.
         """
-        self.train()
-
+        sentence = to_gpu(sentence)
         mbsize = sentence.size(1)
 
-        # sentence: '<start> I want to fly <eos>'
-        # enc_inputs: '<start> I want to fly <eos>'
-        # dec_inputs: '<start> I want to fly <eos>'
-        # dec_targets: 'I want to fly <eos> <pad>'
         pad_words = Variable(torch.LongTensor([self.PAD_IDX])).repeat(1, mbsize)
-        pad_words = pad_words.cuda() if self.gpu else pad_words
+        pad_words = to_gpu(pad_words)
 
         enc_inputs = sentence
         dec_inputs = sentence
@@ -182,7 +182,14 @@ class RNN_VAE(nn.Module):
         )
         kl_loss = torch.mean(0.5 * torch.sum(torch.exp(logvar) + mu**2 - 1 - logvar, 1))
 
-        return recon_loss, kl_loss
+        return {
+            'recon_loss': recon_loss,
+            'kl_loss': kl_loss,
+            'mu': mu,
+            'logvar': logvar,
+            'z': z,
+            'y': y
+        }
 
     def generate_sentences(self, batch_size):
         """
@@ -206,8 +213,6 @@ class RNN_VAE(nn.Module):
         to train discriminator. `False` means that this will return list of
         `word_idx` which is useful for evaluation.
         """
-        self.eval()
-
         word = torch.LongTensor([self.START_IDX])
         word = word.cuda() if self.gpu else word
         word = Variable(word)  # '<start>'
@@ -244,11 +249,9 @@ class RNN_VAE(nn.Module):
             outputs.append(idx)
 
         # Back to default state: train
-        self.train()
-
         if raw:
             outputs = Variable(torch.LongTensor(outputs)).unsqueeze(0)
-            return outputs.cuda() if self.gpu else outputs
+            return to_gpu(outputs)
         else:
             return outputs
 
@@ -278,8 +281,6 @@ class RNN_VAE(nn.Module):
         Soft embeddings are calculated as weighted average of word_emb
         according to p(x|z,c).
         """
-        self.eval()
-
         z = z.view(1, 1, -1)
 
         word = torch.LongTensor([self.START_IDX])
@@ -315,9 +316,6 @@ class RNN_VAE(nn.Module):
 
         # 1 x 16 x emb_dim
         outputs = torch.cat(outputs, dim=0).unsqueeze(0)
-
-        # Back to default state: train
-        self.train()
 
         return outputs.cuda() if self.gpu else outputs
 

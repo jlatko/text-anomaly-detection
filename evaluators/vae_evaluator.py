@@ -17,3 +17,9 @@ class VAEEvaluator:
 
     def mean_losses(self):
         return np.mean(self.recon_losses), np.mean(self.kl_losses), np.mean(self.losses)
+
+    def log_and_save_progress(self, epoch, name):
+        e_recon_loss, e_kl_loss, e_loss = self.mean_losses()
+        print(f'EPOCH {epoch} {name.upper()} Loss: {e_loss:.2f} || '
+              f'KL {e_kl_loss:.2f} || '
+              f'Recon {e_recon_loss:.2f} ')

@@ -7,7 +7,8 @@ from datasets.batch_generator import BatchGenerator
 from paths import DATA_DIR, GLOVE_DIR
 
 
-def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size):
+def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
+                      train_source, val_source):
     utterance_field = data.Field(sequential=True,
                                  # tokenize=lambda s: ast.literal_eval(s),
                                  tokenize='spacy', # what's the difference?
@@ -27,8 +28,8 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size):
 
     train_dataset, val_dataset = data.TabularDataset.splits(path=data_path,
                                                             format='csv',
-                                                            train='traindf.csv',
-                                                            validation='valdf.csv',
+                                                            train=train_source,
+                                                            validation=val_source,
                                                             fields=train_val_fields,
                                                             skip_header=True) # what about seed?
 
