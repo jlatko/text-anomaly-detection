@@ -10,8 +10,8 @@ from paths import DATA_DIR, GLOVE_DIR
 def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
                       train_source, val_source):
     utterance_field = data.Field(sequential=True,
-                                 # tokenize=lambda s: ast.literal_eval(s),
-                                 tokenize='spacy', # what's the difference?
+                                 tokenize=lambda s: ast.literal_eval(s),
+                                 # tokenize='spacy', # what's the difference?
                                  fix_length=15,
                                  batch_first=True,
                                  use_vocab=True,
