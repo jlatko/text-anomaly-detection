@@ -30,7 +30,7 @@ def preprocess_IMDB(df, lower_word_count=3, upper_word_count=15):
     df["utterance"] = df["utterance"].apply(sentence_detector.tokenize)
     df_sent = flatten_sentences(df)
     sen_by_words = df_sent["utterance"].apply(word_tokenize)
-    
+
     word_counts = sen_by_words.apply(len)
     sen_by_words = sen_by_words[(word_counts <= upper_word_count) & (word_counts >= lower_word_count)]
     return sen_by_words
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     df = pd.read_csv(path_source, usecols=["review"])
     df = df.rename(columns={"review": "utterance"})
-    df = preprocess_IMDB(df, )
+    df = preprocess_IMDB(df)
 
     split_ratio = 0.95
 
