@@ -1,12 +1,14 @@
 import os
 
 import pandas as pd
+import nltk
 import nltk.data
 from nltk.tokenize import word_tokenize
 import numpy as np
 
 from paths import DATA_DIR
 
+nltk.download('punkt')
 tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 
 
