@@ -6,7 +6,7 @@ import torch
 from sacred import Experiment
 
 from evaluators.vae_evaluator import VAEEvaluator
-from utils.experiment_utils import setup_model_and_dataloading, get_kl_weight, get_train_pbar
+from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step
 from utils.model_utils import print_random_sentences, print_reconstructed_sentences, to_cpu
 from utils.corpus import get_corpus
 torch.manual_seed(12)
@@ -19,6 +19,7 @@ ex = Experiment('text_vae')
 
 @ex.config
 def default_config():
+    data_path = '../data/'
     source = 'friends-corpus' 
     # source = 'IMDB Dataset.csv' 
     split_sentences=True
@@ -38,47 +39,13 @@ def default_config():
     z_size = 128
     lr = 1e-3
     n_epochs = 100
-    print_every = 1
+    print_every = 10
     subsample_rows = False
 
-def train_step(epoch, model, train_eval, train_batch_it, opt):
-    kld_weight = get_kl_weight(epoch)
-    print(f'KL weight: {kld_weight}')
-    # TRAINING
-    model.train()
-    train_eval.reset()
 
-    pbar = get_train_pbar(epoch=epoch)
-    for batch_input in pbar(train_batch_it):
-        res = model.forward(batch_input)
-        recon_loss = res['recon_loss']
-        kl_loss = res['kl_loss']
-        loss = recon_loss + kld_weight * kl_loss
-        loss.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.vae_params, 5)  # tODO use this?
-        opt.step()
-        opt.zero_grad()
-        train_eval.update(recon_loss.item(), kl_loss.item(), loss.item())
-        e_recon_loss, e_kl_loss, e_loss = train_eval.mean_losses()
-        pbar.widgets[5] = progressbar.FormatLabel(f'Loss (E/B) {e_loss:.2f} / {loss.item():.2f} || '
-                                                  f'KL {e_kl_loss:.2f} / {kl_loss.item():.2f} || '
-                                                  f'Recon {e_recon_loss:.2f} / {recon_loss.item():.2f}')
-
-def val_step(model, val_eval, val_batch_it, utterance_field):
-    # EVALUATION
-    model.eval()
-    val_eval.reset()
-    pbar = progressbar.ProgressBar(fd=sys.stdout)
-    for batch_input in pbar(val_batch_it):
-        res = model.forward(batch_input)
-        recon_loss = res['recon_loss']
-        kl_loss = res['kl_loss']
-        val_eval.update(recon_loss.item(), kl_loss.item(), np.nan)
-
-@ex.capture
 def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
           n_epochs, print_every, split_sentences, punct, to_ascii,
-          min_len, max_len, test_size, text_field, subsample_rows):
+          min_len, max_len, test_size, text_field, subsample_rows, data_path):
     # prepare/load data
     _, _, train_source, val_source = get_corpus(source, split_sentences, punct, to_ascii,
                min_len, max_len, test_size, text_field, subsample_rows)
@@ -88,6 +55,7 @@ def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr,
     ) = setup_model_and_dataloading(train_source=train_source,
                                     val_source=val_source,
                                     batch_size=batch_size,
+                                    data_path=data_path,
                                     word_embedding_size=word_embedding_size,
                                     rnn_hidden=rnn_hidden,
                                     z_size=z_size,
@@ -124,5 +92,9 @@ def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr,
             print_random_sentences(model, utterance_field)
 
 @ex.automain
-def main():
-    train()
+def main(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
+          n_epochs, print_every, split_sentences, punct, to_ascii,
+          min_len, max_len, test_size, text_field, subsample_rows, data_path):
+    train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
+          n_epochs, print_every, split_sentences, punct, to_ascii,
+          min_len, max_len, test_size, text_field, subsample_rows, data_path)

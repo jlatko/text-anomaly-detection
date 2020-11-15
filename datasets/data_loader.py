@@ -4,7 +4,7 @@ from torchtext.vocab import GloVe
 
 import ast
 from datasets.batch_generator import BatchGenerator
-from paths import DATA_DIR, GLOVE_DIR
+from paths import DATA_DIR
 
 
 def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
@@ -36,8 +36,8 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
     # specify the path to the localy saved vectors
     # vec = vocab.Vectors(f'glove.6B.{WORD_EMBEDDING_SIZE}d.txt',
     #                     GLOVE_DIR)  # download here: https://nlp.stanford.edu/projects/glove/
-    vec = GloVe('6B', dim=emb_size)
-    utterance_field.build_vocab(train_dataset, val_dataset, vectors=vec) # what's the difference?
+    vec = GloVe('6B', dim=emb_size, vectors_cache=DATA_DIR)
+    utterance_field.build_vocab(train_dataset, val_dataset, vectors=data_path) # what's the difference?
 
     # print(utterance_field.vocab.vectors[utterance_field.vocab.stoi['the']])
 

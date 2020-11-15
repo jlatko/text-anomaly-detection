@@ -9,12 +9,12 @@ from datasets.data_loader import init_data_loading
 from models.rnn_vae import RNN_VAE
 
 
-def setup_model_and_dataloading(train_source, val_source, batch_size,
+def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
                                 word_embedding_size, rnn_hidden, z_size, lr):
 
     ((train_dataset, val_dataset),
      (train_loader, val_loader),
-     utterance_field)  = init_data_loading(data_path='data/',
+     utterance_field)  = init_data_loading(data_path=data_path,
                                            train_batch_size=batch_size,
                                            val_batch_size=batch_size,
                                            emb_size=word_embedding_size,
@@ -56,3 +56,37 @@ def get_train_pbar(epoch):
 
     return progressbar.ProgressBar(widgets=widgets, fd=sys.stdout)
 
+
+def train_step(epoch, model, train_eval, train_batch_it, opt):
+    kld_weight = get_kl_weight(epoch)
+    print(f'KL weight: {kld_weight}')
+    # TRAINING
+    model.train()
+    train_eval.reset()
+
+    pbar = get_train_pbar(epoch=epoch)
+    for batch_input in pbar(train_batch_it):
+        res = model.forward(batch_input)
+        recon_loss = res['recon_loss']
+        kl_loss = res['kl_loss']
+        loss = recon_loss + kld_weight * kl_loss
+        loss.backward()
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.vae_params, 5)  # tODO use this?
+        opt.step()
+        opt.zero_grad()
+        train_eval.update(recon_loss.item(), kl_loss.item(), loss.item())
+        e_recon_loss, e_kl_loss, e_loss = train_eval.mean_losses()
+        pbar.widgets[5] = progressbar.FormatLabel(f'Loss (E/B) {e_loss:.2f} / {loss.item():.2f} || '
+                                                  f'KL {e_kl_loss:.2f} / {kl_loss.item():.2f} || '
+                                                  f'Recon {e_recon_loss:.2f} / {recon_loss.item():.2f}')
+
+def val_step(model, val_eval, val_batch_it, utterance_field):
+    # EVALUATION
+    model.eval()
+    val_eval.reset()
+    pbar = progressbar.ProgressBar(fd=sys.stdout)
+    for batch_input in pbar(val_batch_it):
+        res = model.forward(batch_input)
+        recon_loss = res['recon_loss']
+        kl_loss = res['kl_loss']
+        val_eval.update(recon_loss.item(), kl_loss.item(), np.nan)
