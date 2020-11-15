@@ -12,6 +12,7 @@ nltk.download('punkt')
 tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 
 
+
 def preprocess_IMDB_sentence(sentence):
     # TODO consider if we should leave non word characters
 

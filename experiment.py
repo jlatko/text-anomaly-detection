@@ -8,7 +8,7 @@ from sacred import Experiment
 from evaluators.vae_evaluator import VAEEvaluator
 from utils.experiment_utils import setup_model_and_dataloading, get_kl_weight, get_train_pbar
 from utils.model_utils import print_random_sentences, print_reconstructed_sentences, to_cpu
-
+from utils.corpus import get_corpus
 torch.manual_seed(12)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(12)
@@ -19,9 +19,18 @@ ex = Experiment('text_vae')
 
 @ex.config
 def default_config():
-    train_source = 'tiny_train.csv' # for debugging
+    source = 'friends-corpus' 
+    # source = 'IMDB Dataset.csv' 
+    split_sentences=True
+    punct=False
+    to_ascii=True
+    min_len=3
+    max_len=15
+    test_size=0.1
+    text_field='text'
+    # train_source = 'tiny_train.csv' # for debugging
     # train_source = 'traindf.csv'
-    val_source = 'tiny_val.csv' # for debugging
+    # val_source = 'tiny_val.csv' # for debugging
     # val_source = 'valdf.csv'
     batch_size = 16
     word_embedding_size = 50
@@ -29,7 +38,8 @@ def default_config():
     z_size = 128
     lr = 1e-3
     n_epochs = 100
-    print_every = 10
+    print_every = 1
+    subsample_rows = False
 
 def train_step(epoch, model, train_eval, train_batch_it, opt):
     kld_weight = get_kl_weight(epoch)
@@ -66,7 +76,13 @@ def val_step(model, val_eval, val_batch_it, utterance_field):
         val_eval.update(recon_loss.item(), kl_loss.item(), np.nan)
 
 @ex.capture
-def train(train_source, val_source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, n_epochs, print_every):
+def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
+          n_epochs, print_every, split_sentences, punct, to_ascii,
+          min_len, max_len, test_size, text_field, subsample_rows):
+    # prepare/load data
+    _, _, train_source, val_source = get_corpus(source, split_sentences, punct, to_ascii,
+               min_len, max_len, test_size, text_field, subsample_rows)
+    
     (
         train_batch_it, val_batch_it, model, opt, utterance_field
     ) = setup_model_and_dataloading(train_source=train_source,
@@ -85,7 +101,6 @@ def train(train_source, val_source, batch_size, word_embedding_size, rnn_hidden,
         # Train
         train_step(epoch, model, train_eval, train_batch_it, opt)
         train_eval.log_and_save_progress(epoch, 'train') # TODO# print sentences
-
 
         # Val
         val_step(model, val_eval, val_batch_it, utterance_field)

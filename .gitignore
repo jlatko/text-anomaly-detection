@@ -133,3 +133,4 @@ data
 
 .DS_Store
 .vector_cache/
+.data_options
