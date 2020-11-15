@@ -37,7 +37,7 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
     # vec = vocab.Vectors(f'glove.6B.{WORD_EMBEDDING_SIZE}d.txt',
     #                     GLOVE_DIR)  # download here: https://nlp.stanford.edu/projects/glove/
     vec = GloVe('6B', dim=emb_size, cache=data_path)
-    utterance_field.build_vocab(train_dataset, val_dataset, vectors=data_path) # what's the difference?
+    utterance_field.build_vocab(train_dataset, val_dataset, vectors=vec) # what's the difference?
 
     # print(utterance_field.vocab.vectors[utterance_field.vocab.stoi['the']])
 
