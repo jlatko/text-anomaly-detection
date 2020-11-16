@@ -19,7 +19,7 @@ ex = Experiment('text_vae')
 
 @ex.config
 def default_config():
-    data_path = '../data/'
+    data_path = 'data/'
     source = 'friends-corpus' 
     # source = 'IMDB Dataset.csv' 
     split_sentences=True
@@ -29,22 +29,26 @@ def default_config():
     max_len=15
     test_size=0.1
     text_field='text'
-    # train_source = 'tiny_train.csv' # for debugging
-    # train_source = 'traindf.csv'
-    # val_source = 'tiny_val.csv' # for debugging
-    # val_source = 'valdf.csv'
     batch_size = 16
     word_embedding_size = 50
-    rnn_hidden = 128
-    z_size = 128
     lr = 1e-3
     n_epochs = 100
     print_every = 10
-    subsample_rows = False
+    subsample_rows = None # for testing
     min_freq=1
+    model_kwargs = {
+        'set_other_to_random': True,
+        'set_unk_to_random': True,
+        'decode_with_embeddings': True,
+        'h_dim':  128,
+        'z_dim':  128,
+        'p_word_dropout': 0.3,
+        'max_sent_len':  max_len,
+        'freeze_embeddings': False,
+    }
 
 @ex.capture
-def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
+def train(source, batch_size, word_embedding_size, model_kwargs, lr, 
           n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
           min_len, max_len, test_size, text_field, subsample_rows, data_path):
     # prepare/load data
@@ -66,9 +70,8 @@ def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr,
                                     batch_size=batch_size,
                                     data_path=data_path,
                                     word_embedding_size=word_embedding_size,
-                                    rnn_hidden=rnn_hidden,
-                                    z_size=z_size,
-                                    lr=lr, min_freq=min_freq)
+                                    lr=lr, min_freq=min_freq,
+                                    model_kwargs=model_kwargs)
 
     print(model)
     train_eval = VAEEvaluator()

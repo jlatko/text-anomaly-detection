@@ -10,7 +10,7 @@ from models.rnn_vae import RNN_VAE
 
 
 def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
-                                word_embedding_size, rnn_hidden, z_size, lr):
+                                word_embedding_size, lr, min_freq, model_kwargs):
 
     ((train_dataset, val_dataset),
      (train_loader, val_loader),
@@ -19,7 +19,8 @@ def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
                                            val_batch_size=batch_size,
                                            emb_size=word_embedding_size,
                                            train_source=train_source,
-                                           val_source=val_source)
+                                           val_source=val_source,
+                                           min_freq=min_freq)
 
     vocab_size = len(utterance_field.vocab)
 
@@ -28,16 +29,14 @@ def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
 
 
     model = RNN_VAE(
-            vocab_size, rnn_hidden, z_size,
+            vocab_size,
             unk_idx=utterance_field.vocab.stoi['<unk>'],
             pad_idx=utterance_field.vocab.stoi['<pad>'],
             start_idx=utterance_field.vocab.stoi['<start>'],
             eos_idx=utterance_field.vocab.stoi['<eos>'],
-            max_sent_len=15,
-            p_word_dropout=0.3,
             pretrained_embeddings=utterance_field.vocab.vectors,
-            freeze_embeddings=True,
-            gpu=torch.cuda.is_available()
+            gpu=torch.cuda.is_available(),
+            **model_kwargs
         )
     opt = torch.optim.Adam(model.vae_params, lr=lr)
     return train_batch_it, val_batch_it, model, opt, utterance_field
@@ -66,14 +65,24 @@ def train_step(epoch, model, train_eval, train_batch_it, opt):
 
     pbar = get_train_pbar(epoch=epoch)
     for batch_input in pbar(train_batch_it):
+        # run model
         res = model.forward(batch_input)
+
+        # compute loss and backpropagate 
         recon_loss = res['recon_loss']
         kl_loss = res['kl_loss']
         loss = recon_loss + kld_weight * kl_loss
         loss.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.vae_params, 5)  # tODO use this?
+
+         # if frozen: leave gradient only for special tokens 
+        model.mask_embedding_grad()
+
+        # optimizer step
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.vae_params, 5) 
         opt.step()
         opt.zero_grad()
+
+        # evaluation and logging
         train_eval.update(recon_loss.item(), kl_loss.item(), loss.item())
         e_recon_loss, e_kl_loss, e_loss = train_eval.mean_losses()
         pbar.widgets[5] = progressbar.FormatLabel(f'Loss (E/B) {e_loss:.2f} / {loss.item():.2f} || '
