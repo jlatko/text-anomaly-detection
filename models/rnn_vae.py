@@ -7,6 +7,15 @@ from itertools import chain
 
 from utils.model_utils import to_gpu
 
+def cosine_sim_matrix(a, b, eps=1e-8):
+    """
+    cosine similarity
+    """
+    a_n, b_n = a.norm(dim=1)[:, None], b.norm(dim=1)[:, None]
+    a_norm = a / torch.max(a_n, eps * torch.ones_like(a_n))
+    b_norm = b / torch.max(b_n, eps * torch.ones_like(b_n))
+    sim_mt = torch.mm(a_norm, b_norm.transpose(0, 1))
+    return sim_mt
 
 class RNN_VAE(nn.Module):
     """
@@ -15,24 +24,26 @@ class RNN_VAE(nn.Module):
     3. Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
     """
 
-    def __init__(self, n_vocab, h_dim, z_dim, p_word_dropout=0.3,
+    def __init__(self, n_vocab, h_dim=128, z_dim=128, p_word_dropout=0.3,
                  unk_idx=0, pad_idx=1, start_idx=2, eos_idx=3, max_sent_len=15,
-                 use_input_embeddings=True,
+                 use_input_embeddings=True, set_other_to_random=False,
+                 set_unk_to_random=True, decode_with_embeddings=True,
                  pretrained_embeddings=None, freeze_embeddings=False, gpu=False):
         super(RNN_VAE, self).__init__()
 
-        self.UNK_IDX = unk_idx
         self.PAD_IDX = pad_idx
+        self.UNK_IDX = unk_idx
         self.START_IDX = start_idx
         self.EOS_IDX = eos_idx
         self.MAX_SENT_LEN = max_sent_len
+        self.freeze_embeddings = freeze_embeddings
 
         self.n_vocab = n_vocab
         self.h_dim = h_dim
         self.z_dim = z_dim
         self.p_word_dropout = p_word_dropout
         self.use_input_embeddings = use_input_embeddings # in case we go for sentence embeddings
-
+        self.decode_with_embeddings = decode_with_embeddings
         self.gpu = gpu
 
         """
@@ -48,11 +59,27 @@ class RNN_VAE(nn.Module):
 
                 # Set pretrained embeddings
                 self.word_emb.weight.data.copy_(pretrained_embeddings)
-
-                if freeze_embeddings:
-                    self.word_emb.weight.requires_grad = False
         else:
             raise NotImplementedError('not supported yet')
+
+        if set_unk_to_random:
+            self.word_emb.weight[self.UNK_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
+
+        if set_other_to_random:
+            self.word_emb.weight[self.PAD_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
+            self.word_emb.weight[self.START_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
+            self.word_emb.weight[self.EOS_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
+        
+        if self.freeze_embeddings:
+            self.emb_grad_mask = np.zeros(self.word_emb.weight.shape, dtype=np.float32)
+            self.emb_grad_mask[self.UNK_IDX,:] = 1
+            self.emb_grad_mask[self.PAD_IDX,:] = 1
+            self.emb_grad_mask[self.START_IDX,:] = 1
+            self.emb_grad_mask[self.EOS_IDX,:] = 1
+            self.emb_grad_mask = to_gpu(torch.tensor(self.emb_grad_mask))
+        else:
+            self.emb_grad_mask = None
+
 
         """
         Encoder is GRU with FC layers connected to last hidden unit
@@ -64,8 +91,13 @@ class RNN_VAE(nn.Module):
         """
         Decoder is GRU with `z` appended at its inputs
         """
-        self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=0.3)
-        self.decoder_fc = nn.Linear(z_dim, n_vocab)
+        if decode_with_embeddings:
+            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=0.3)
+            self.decoder_fc = nn.Linear(z_dim, self.emb_dim)
+
+        else:
+            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=0.3)
+            self.decoder_fc = nn.Linear(z_dim, n_vocab)
 
         """
         Grouping the model's parameters: separating encoder, decoder, and discriminator
@@ -89,6 +121,16 @@ class RNN_VAE(nn.Module):
         """
         if self.gpu:
             self.cuda()
+    
+    def decode(self, h):
+        y = self.decoder_fc(h)
+        if self.decode_with_embeddings:
+            y = cosine_sim_matrix(y, self.word_emb.weight)
+        return y
+
+    def mask_embedding_grad(self):
+        if self.freeze_embeddings:
+            self.word_emb.weight.grad *= self.emb_grad_mask
 
     def forward_encoder(self, inputs):
         """
@@ -143,7 +185,7 @@ class RNN_VAE(nn.Module):
         seq_len, mbsize, _ = outputs.size()
 
         outputs = outputs.view(seq_len*mbsize, -1)
-        y = self.decoder_fc(outputs)
+        y = self.decode(outputs)
         y = y.view(seq_len, mbsize, self.n_vocab)
 
         return y
@@ -233,7 +275,7 @@ class RNN_VAE(nn.Module):
             emb = torch.cat([emb, z], 2)
 
             output, h = self.decoder(emb, h)
-            y = self.decoder_fc(output).view(-1)
+            y = self.decode(output.view((1,-1))).view(-1)
             y = F.softmax(y/temp, dim=0)
 
             idx = torch.multinomial(y, num_samples=1)
@@ -298,7 +340,7 @@ class RNN_VAE(nn.Module):
 
         for i in range(self.MAX_SENT_LEN):
             output, h = self.decoder(emb, h)
-            o = self.decoder_fc(output).view(-1)
+            o = self.decoder(output).view(-1)
 
             # Sample softmax with temperature
             y = F.softmax(o / temp, dim=0)

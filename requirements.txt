@@ -6,3 +6,5 @@ matplotlib~=3.3.2
 torchtext~=0.6.0
 hyperopt~=0.2.5
 scikit-learn~=0.23.2
+convokit~=2.4.3
+sacred~=0.8.1
