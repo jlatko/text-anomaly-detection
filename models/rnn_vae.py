@@ -76,6 +76,7 @@ class RNN_VAE(nn.Module):
             self.emb_grad_mask[self.PAD_IDX,:] = 1
             self.emb_grad_mask[self.START_IDX,:] = 1
             self.emb_grad_mask[self.EOS_IDX,:] = 1
+            self.emb_grad_mask = to_gpu(torch.tensor(self.emb_grad_mask))
         else:
             self.emb_grad_mask = None
 
