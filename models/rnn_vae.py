@@ -82,7 +82,14 @@ class RNN_VAE(nn.Module):
         self.vae_params = chain(
             self.word_emb.parameters(), self.encoder_params, self.decoder_params
         )
+
+        self.vae_params_no_embed = chain(
+            self.encoder_params, self.decoder_params
+        )
+
+        self.emb_params = self.word_emb.parameters()
         self.vae_params = filter(lambda p: p.requires_grad, self.vae_params)
+        self.vae_params_no_embed = filter(lambda p: p.requires_grad, self.vae_params)
 
         """
         Use GPU if set

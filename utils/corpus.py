@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 nltk.download('punkt')
 punctuation = '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~' # no '
 
-def get_corpus(source, split_sentences=False, punct=True, to_ascii=True,
+def get_corpus(source, split_sentences=False, punct=True, to_ascii=True, data_path=DATA_DIR,
                min_len=3, max_len=15, test_size=0.1, text_field='text', subsample_rows=False, save=True):
     if source.endswith('.csv'):
         csv = True
@@ -27,8 +27,8 @@ def get_corpus(source, split_sentences=False, punct=True, to_ascii=True,
                   f'{"_ascii" if to_ascii else ""}' \
                   f'{f"_sub{subsample_rows}" if subsample_rows else ""}' \
                   f'_{test_size}_{min_len}_{max_len}' 
-    corpus_train = os.path.join(DATA_DIR, f'{corpus_name}_train.csv')
-    corpus_test = os.path.join(DATA_DIR, f'{corpus_name}_test.csv')
+    corpus_train = os.path.join(data_path, f'{corpus_name}_train.csv')
+    corpus_test = os.path.join(data_path, f'{corpus_name}_test.csv')
 
     # Load from cache
     if os.path.isfile(corpus_train) and os.path.isfile(corpus_test):
@@ -41,7 +41,7 @@ def get_corpus(source, split_sentences=False, punct=True, to_ascii=True,
     # load csv or download
     if csv:
         print('Loading dataset from csv...')
-        df = pd.read_csv(os.path.join(DATA_DIR, source))
+        df = pd.read_csv(os.path.join(data_path, source))
     else:
         print('Downloading dataset...')
         corp = Corpus(filename=download(name))

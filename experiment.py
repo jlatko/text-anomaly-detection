@@ -41,14 +41,23 @@ def default_config():
     n_epochs = 100
     print_every = 10
     subsample_rows = False
+    min_freq=1
 
-
+@ex.capture
 def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
-          n_epochs, print_every, split_sentences, punct, to_ascii,
+          n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
           min_len, max_len, test_size, text_field, subsample_rows, data_path):
     # prepare/load data
-    _, _, train_source, val_source = get_corpus(source, split_sentences, punct, to_ascii,
-               min_len, max_len, test_size, text_field, subsample_rows)
+    _, _, train_source, val_source = get_corpus(source=source,
+                                                split_sentences=split_sentences,
+                                                punct=punct,
+                                                to_ascii=to_ascii,
+                                                data_path=data_path,
+                                                min_len=min_len,
+                                                max_len=max_len,
+                                                test_size=test_size,
+                                                text_field=text_field,
+                                                subsample_rows=subsample_rows)
     
     (
         train_batch_it, val_batch_it, model, opt, utterance_field
@@ -59,7 +68,7 @@ def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr,
                                     word_embedding_size=word_embedding_size,
                                     rnn_hidden=rnn_hidden,
                                     z_size=z_size,
-                                    lr=lr)
+                                    lr=lr, min_freq=min_freq)
 
     print(model)
     train_eval = VAEEvaluator()
@@ -92,9 +101,5 @@ def train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr,
             print_random_sentences(model, utterance_field)
 
 @ex.automain
-def main(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
-          n_epochs, print_every, split_sentences, punct, to_ascii,
-          min_len, max_len, test_size, text_field, subsample_rows, data_path):
-    train(source, batch_size, word_embedding_size, rnn_hidden, z_size, lr, 
-          n_epochs, print_every, split_sentences, punct, to_ascii,
-          min_len, max_len, test_size, text_field, subsample_rows, data_path)
+def main():
+    train()
