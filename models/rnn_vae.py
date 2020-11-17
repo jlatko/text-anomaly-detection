@@ -28,7 +28,7 @@ class RNN_VAE(nn.Module):
                  unk_idx=0, pad_idx=1, start_idx=2, eos_idx=3, max_sent_len=15,
                  use_input_embeddings=True, set_other_to_random=False,
                  set_unk_to_random=True, decode_with_embeddings=True,
-                 rnn_dropout=0.3,
+                 rnn_dropout=0.3, mask_pad=True,
                  pretrained_embeddings=None, freeze_embeddings=False, gpu=False):
         super(RNN_VAE, self).__init__()
 
@@ -46,6 +46,13 @@ class RNN_VAE(nn.Module):
         self.use_input_embeddings = use_input_embeddings # in case we go for sentence embeddings
         self.decode_with_embeddings = decode_with_embeddings
         self.gpu = gpu
+
+        if mask_pad:
+            self.weights = np.ones(n_vocab)
+            self.weights[self.PAD_IDX] = 0
+            self.weights = to_gpu(torch.tensor(self.weights.astype(np.float32)))
+        else:
+            self.weights = None
 
         """
         Word embeddings layer
@@ -221,7 +228,7 @@ class RNN_VAE(nn.Module):
 
         # TODO: mask out <pad>
         recon_loss = F.cross_entropy(
-            y.view(-1, self.n_vocab), dec_targets.view(-1), size_average=True
+            y.view(-1, self.n_vocab), dec_targets.view(-1), size_average=True, weight=self.weights
         )
         kl_loss = torch.mean(0.5 * torch.sum(torch.exp(logvar) + mu**2 - 1 - logvar, 1))
 
