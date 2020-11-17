@@ -84,7 +84,7 @@ class RNN_VAE(nn.Module):
         """
         Encoder is GRU with FC layers connected to last hidden unit
         """
-        self.encoder = nn.GRU(self.emb_dim, h_dim)
+        self.encoder = nn.GRU(self.emb_dim, h_dim, bidirectional=True)
         self.q_mu = nn.Linear(h_dim, z_dim)
         self.q_logvar = nn.Linear(h_dim, z_dim)
 
