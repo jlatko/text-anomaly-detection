@@ -112,7 +112,6 @@ class RNN_VAE(nn.Module):
             value_dimensions=64,
             feed_forward_dimensions=self.emb_dim,
             attention_type="full",  # change this to use another
-            # attention implementation
             activation="gelu"
         ).get()
 
