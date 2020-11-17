@@ -28,6 +28,7 @@ class RNN_VAE(nn.Module):
                  unk_idx=0, pad_idx=1, start_idx=2, eos_idx=3, max_sent_len=15,
                  use_input_embeddings=True, set_other_to_random=False,
                  set_unk_to_random=True, decode_with_embeddings=True,
+                 rnn_dropout=0.3,
                  pretrained_embeddings=None, freeze_embeddings=False, gpu=False):
         super(RNN_VAE, self).__init__()
 
@@ -92,11 +93,11 @@ class RNN_VAE(nn.Module):
         Decoder is GRU with `z` appended at its inputs
         """
         if decode_with_embeddings:
-            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=0.3)
+            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=rnn_dropout)
             self.decoder_fc = nn.Linear(z_dim, self.emb_dim)
 
         else:
-            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=0.3)
+            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=rnn_dropout)
             self.decoder_fc = nn.Linear(z_dim, n_vocab)
 
         """
