@@ -32,25 +32,32 @@ def default_config():
     text_field = 'text'
     batch_size = 16
     word_embedding_size = 50
-    lr = 1e-3
+    optimizer_kwargs = {
+        'lr': 1e-3
+    }
     n_epochs = 100
-    print_every = 10
-    subsample_rows = None  # for testing
-    min_freq = 1
+    print_every = 5
+    subsample_rows = None # for testing
+    min_freq=1
     model_kwargs = {
         'set_other_to_random': True,
         'set_unk_to_random': True,
-        'decode_with_embeddings': True,
-        'h_dim': 128,
-        'z_dim': 128,
+        'decode_with_embeddings': False, # [False, 'cosine', 'cdist']
+        'h_dim':  128,
+        'z_dim':  128,
         'p_word_dropout': 0.3,
-        'max_sent_len': max_len,
-        'freeze_embeddings': False,
+        'max_sent_len':  max_len,
+        'freeze_embeddings': True,
+        'rnn_dropout': 0.3,
+    }
+    kl_kwargs = {
+        'cycles': 5,
+        'scale': 1
     }
 
 
 @ex.capture
-def train(source, batch_size, word_embedding_size, model_kwargs, lr,
+def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwargs, kl_kwargs,
           n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
           min_len, max_len, test_size, text_field, subsample_rows, data_path):
     # prepare/load data
@@ -72,7 +79,8 @@ def train(source, batch_size, word_embedding_size, model_kwargs, lr,
                                     batch_size=batch_size,
                                     data_path=data_path,
                                     word_embedding_size=word_embedding_size,
-                                    lr=lr, min_freq=min_freq,
+                                    optimizer_kwargs=optimizer_kwargs,
+                                    min_freq=min_freq,
                                     model_kwargs=model_kwargs)
 
     print(model)
@@ -81,7 +89,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, lr,
 
     for epoch in range(n_epochs):
         # Train
-        train_step(epoch, model, train_eval, train_batch_it, opt, n_epochs)
+        train_step(epoch, model, train_eval, train_batch_it, opt, n_epochs, kl_kwargs)
         train_eval.log_and_save_progress(epoch, 'train')  # TODO# print sentences
 
         # Val
