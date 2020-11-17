@@ -5,7 +5,18 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from itertools import chain
 
+from fast_transformers.builders import TransformerEncoderBuilder
+
+builder = TransformerEncoderBuilder.from_kwargs(
+    n_layers=8,
+    n_heads=8,
+    query_dimensions=64,
+    value_dimensions=64,
+    feed_forward_dimensions=1024
+)
+
 from utils.model_utils import to_gpu
+
 
 def cosine_sim_matrix(a, b, eps=1e-8):
     """
@@ -16,6 +27,7 @@ def cosine_sim_matrix(a, b, eps=1e-8):
     b_norm = b / torch.max(b_n, eps * torch.ones_like(b_n))
     sim_mt = torch.mm(a_norm, b_norm.transpose(0, 1))
     return sim_mt
+
 
 class RNN_VAE(nn.Module):
     """
@@ -43,7 +55,7 @@ class RNN_VAE(nn.Module):
         self.h_dim = h_dim
         self.z_dim = z_dim
         self.p_word_dropout = p_word_dropout
-        self.use_input_embeddings = use_input_embeddings # in case we go for sentence embeddings
+        self.use_input_embeddings = use_input_embeddings  # in case we go for sentence embeddings
         self.decode_with_embeddings = decode_with_embeddings
         self.gpu = gpu
 
@@ -77,22 +89,33 @@ class RNN_VAE(nn.Module):
             self.word_emb.weight[self.PAD_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
             self.word_emb.weight[self.START_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
             self.word_emb.weight[self.EOS_IDX].data.copy_(torch.tensor(np.random.randn(self.emb_dim)))
-        
+
         if self.freeze_embeddings:
             self.emb_grad_mask = np.zeros(self.word_emb.weight.shape, dtype=np.float32)
-            self.emb_grad_mask[self.UNK_IDX,:] = 1
-            self.emb_grad_mask[self.PAD_IDX,:] = 1
-            self.emb_grad_mask[self.START_IDX,:] = 1
-            self.emb_grad_mask[self.EOS_IDX,:] = 1
+            self.emb_grad_mask[self.UNK_IDX, :] = 1
+            self.emb_grad_mask[self.PAD_IDX, :] = 1
+            self.emb_grad_mask[self.START_IDX, :] = 1
+            self.emb_grad_mask[self.EOS_IDX, :] = 1
             self.emb_grad_mask = to_gpu(torch.tensor(self.emb_grad_mask))
         else:
             self.emb_grad_mask = None
 
-
         """
         Encoder is GRU with FC layers connected to last hidden unit
         """
-        self.encoder = nn.GRU(self.emb_dim, h_dim, bidirectional=True)
+        # self.encoder = nn.GRU(self.emb_dim, h_dim, bidirectional=True)
+
+        self.encoder = TransformerEncoderBuilder.from_kwargs(
+            n_layers=12,
+            n_heads=12,
+            query_dimensions=64,
+            value_dimensions=64,
+            feed_forward_dimensions=self.emb_dim,
+            attention_type="full",  # change this to use another
+            # attention implementation
+            activation="gelu"
+        ).get()
+
         self.q_mu = nn.Linear(h_dim, z_dim)
         self.q_logvar = nn.Linear(h_dim, z_dim)
 
@@ -100,11 +123,11 @@ class RNN_VAE(nn.Module):
         Decoder is GRU with `z` appended at its inputs
         """
         if decode_with_embeddings:
-            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=rnn_dropout)
+            self.decoder = nn.GRU(self.emb_dim + z_dim, z_dim, dropout=rnn_dropout)
             self.decoder_fc = nn.Linear(z_dim, self.emb_dim)
 
         else:
-            self.decoder = nn.GRU(self.emb_dim+z_dim, z_dim, dropout=rnn_dropout)
+            self.decoder = nn.GRU(self.emb_dim + z_dim, z_dim, dropout=rnn_dropout)
             self.decoder_fc = nn.Linear(z_dim, n_vocab)
 
         """
@@ -129,7 +152,7 @@ class RNN_VAE(nn.Module):
         """
         if self.gpu:
             self.cuda()
-    
+
     def decode(self, h):
         y = self.decoder_fc(h)
         if self.decode_with_embeddings:
@@ -166,7 +189,7 @@ class RNN_VAE(nn.Module):
         """
         eps = Variable(torch.randn(self.z_dim))
         eps = to_gpu(eps)
-        return mu + torch.exp(logvar/2) * eps
+        return mu + torch.exp(logvar / 2) * eps
 
     def sample_z_prior(self, mbsize):
         """
@@ -192,7 +215,7 @@ class RNN_VAE(nn.Module):
         outputs, _ = self.decoder(inputs_emb, init_h)
         seq_len, mbsize, _ = outputs.size()
 
-        outputs = outputs.view(seq_len*mbsize, -1)
+        outputs = outputs.view(seq_len * mbsize, -1)
         y = self.decode(outputs)
         y = y.view(seq_len, mbsize, self.n_vocab)
 
@@ -230,7 +253,7 @@ class RNN_VAE(nn.Module):
         recon_loss = F.cross_entropy(
             y.view(-1, self.n_vocab), dec_targets.view(-1), size_average=True, weight=self.weights
         )
-        kl_loss = torch.mean(0.5 * torch.sum(torch.exp(logvar) + mu**2 - 1 - logvar, 1))
+        kl_loss = torch.mean(0.5 * torch.sum(torch.exp(logvar) + mu ** 2 - 1 - logvar, 1))
 
         return {
             'recon_loss': recon_loss,
@@ -283,8 +306,8 @@ class RNN_VAE(nn.Module):
             emb = torch.cat([emb, z], 2)
 
             output, h = self.decoder(emb, h)
-            y = self.decode(output.view((1,-1))).view(-1)
-            y = F.softmax(y/temp, dim=0)
+            y = self.decode(output.view((1, -1))).view(-1)
+            y = F.softmax(y / temp, dim=0)
 
             idx = torch.multinomial(y, num_samples=1)
 
@@ -381,7 +404,7 @@ class RNN_VAE(nn.Module):
         # Sample masks: elems with val 1 will be set to <unk>
         mask = torch.from_numpy(
             np.random.binomial(1, p=self.p_word_dropout, size=tuple(data.size()))
-                     .astype('bool')
+                .astype('bool')
         )
 
         if self.gpu:
