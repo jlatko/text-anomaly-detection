@@ -79,6 +79,10 @@ def train(source, batch_size, word_embedding_size, model_kwargs, lr,
     train_eval = VAEEvaluator()
     val_eval = VAEEvaluator()
 
+    # setup logger to save into files
+    ogger = Logger(model_name = "RNN", model = model, optimizer = opt, 
+            train_eval = train_eval, val_eval = val_eval)
+
     for epoch in range(n_epochs):
         # Train
         train_step(epoch, model, train_eval, train_batch_it, opt, n_epochs)
@@ -87,6 +91,9 @@ def train(source, batch_size, word_embedding_size, model_kwargs, lr,
         # Val
         val_step(model, val_eval, val_batch_it, utterance_field)
         val_eval.log_and_save_progress(epoch, 'val')
+
+        # save progress to file
+        logger.save_progress(epoch)
 
         if (epoch + 1) % print_every == 0:
             # print sentences
