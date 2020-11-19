@@ -5,6 +5,8 @@ import progressbar
 import torch
 from sacred import Experiment
 
+from logging.logger import Logger
+
 from evaluators.vae_evaluator import VAEEvaluator
 from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step
 from utils.model_utils import print_random_sentences, print_reconstructed_sentences, to_cpu
