@@ -10,8 +10,7 @@ from models.rnn_vae import RNN_VAE
 
 
 def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
-                                word_embedding_size, lr, min_freq, model_kwargs):
-
+                                word_embedding_size, optimizer_kwargs, min_freq, model_kwargs):
     ((train_dataset, val_dataset),
      (train_loader, val_loader),
      utterance_field)  = init_data_loading(data_path=data_path,
@@ -27,23 +26,24 @@ def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
     train_batch_it = BatchGenerator(train_loader, 'utterance')
     val_batch_it = BatchGenerator(val_loader, 'utterance')
 
-
     model = RNN_VAE(
-            vocab_size,
-            unk_idx=utterance_field.vocab.stoi['<unk>'],
-            pad_idx=utterance_field.vocab.stoi['<pad>'],
-            start_idx=utterance_field.vocab.stoi['<start>'],
-            eos_idx=utterance_field.vocab.stoi['<eos>'],
-            pretrained_embeddings=utterance_field.vocab.vectors,
-            gpu=torch.cuda.is_available(),
-            **model_kwargs
-        )
-    opt = torch.optim.Adam(model.vae_params, lr=lr)
+        vocab_size,
+        unk_idx=utterance_field.vocab.stoi['<unk>'],
+        pad_idx=utterance_field.vocab.stoi['<pad>'],
+        start_idx=utterance_field.vocab.stoi['<start>'],
+        eos_idx=utterance_field.vocab.stoi['<eos>'],
+        pretrained_embeddings=utterance_field.vocab.vectors,
+        gpu=torch.cuda.is_available(),
+        **model_kwargs
+    )
+    opt = torch.optim.Adam(model.vae_params, **optimizer_kwargs)
     return train_batch_it, val_batch_it, model, opt, utterance_field
 
 
-def get_kl_weight(epoch):
-    return float(1/(1+np.exp(-0.2*(epoch-30))))
+def get_kl_weight(epoch, all_epochs, cycles=5, scale=1):
+    cycle_length = int(all_epochs / cycles)
+    which_cycle = epoch // cycle_length
+    return scale * (epoch / cycle_length - which_cycle)
 
 def get_train_pbar(epoch):
     widgets = [progressbar.FormatLabel(f'Epoch {epoch:3d} | Batch '),
@@ -55,9 +55,8 @@ def get_train_pbar(epoch):
 
     return progressbar.ProgressBar(widgets=widgets, fd=sys.stdout)
 
-
-def train_step(epoch, model, train_eval, train_batch_it, opt):
-    kld_weight = get_kl_weight(epoch)
+def train_step(epoch, model, train_eval, train_batch_it, opt, all_epochs, kl_kwargs):
+    kld_weight = get_kl_weight(epoch, all_epochs, **kl_kwargs)
     print(f'KL weight: {kld_weight}')
     # TRAINING
     model.train()
