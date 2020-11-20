@@ -20,7 +20,8 @@ ex = Experiment('text_vae')
 def default_config():
     data_path = 'data/'
     source = 'friends-corpus'
-    # source = 'IMDB Dataset.csv' 
+    # source = 'parliament-corpus'
+    # source = 'IMDB Dataset.csv'
     split_sentences = True
     punct = False
     to_ascii = True
@@ -34,23 +35,24 @@ def default_config():
         'lr': 1e-3
     }
     n_epochs = 100
-    print_every = 10
+    print_every = 2
     subsample_rows = None  # for testing
     min_freq = 1
     model_kwargs = {
         'set_other_to_random': False,
         'set_unk_to_random': True,
         'decode_with_embeddings': False, # [False, 'cosine', 'cdist']
-        'h_dim': 128,
-        'z_dim': 128,
+        'h_dim': 256,
+        'z_dim': 256,
         'p_word_dropout': 0.3,
         'max_sent_len':  max_len,
         'freeze_embeddings': True,
         'rnn_dropout': 0.3,
+        'mask_pad': True,
     }
     kl_kwargs = {
         'cycles': 5,
-        'scale': 1
+        'scale': 0.01
     }
 
 @ex.capture
@@ -90,7 +92,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
     for epoch in range(n_epochs):
         # Train
         train_step(epoch, model, train_eval, train_batch_it, opt, n_epochs, kl_kwargs)
-        train_eval.log_and_save_progress(epoch, 'train')  # TODO# print sentences
+        train_eval.log_and_save_progress(epoch, 'train')
 
         # Val
         val_step(model, val_eval, val_batch_it, utterance_field)
