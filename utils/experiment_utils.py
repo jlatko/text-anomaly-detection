@@ -13,13 +13,13 @@ def setup_model_and_dataloading(train_source, val_source, batch_size, data_path,
                                 word_embedding_size, optimizer_kwargs, min_freq, model_kwargs):
     ((train_dataset, val_dataset),
      (train_loader, val_loader),
-     utterance_field) = init_data_loading(data_path=data_path,
-                                          train_batch_size=batch_size,
-                                          val_batch_size=batch_size,
-                                          emb_size=word_embedding_size,
-                                          train_source=train_source,
-                                          val_source=val_source,
-                                          min_freq=min_freq)
+     utterance_field)  = init_data_loading(data_path=data_path,
+                                           train_batch_size=batch_size,
+                                           val_batch_size=batch_size,
+                                           emb_size=word_embedding_size,
+                                           train_source=train_source,
+                                           val_source=val_source,
+                                           min_freq=min_freq)
 
     vocab_size = len(utterance_field.vocab)
 
@@ -45,7 +45,6 @@ def get_kl_weight(epoch, all_epochs, cycles=5, scale=1):
     which_cycle = epoch // cycle_length
     return scale * (epoch / cycle_length - which_cycle)
 
-
 def get_train_pbar(epoch):
     widgets = [progressbar.FormatLabel(f'Epoch {epoch:3d} | Batch '),
                progressbar.SimpleProgress(), ' | ',
@@ -55,7 +54,6 @@ def get_train_pbar(epoch):
                progressbar.ETA()]
 
     return progressbar.ProgressBar(widgets=widgets, fd=sys.stdout)
-
 
 def train_step(epoch, model, train_eval, train_batch_it, opt, all_epochs, kl_kwargs):
     kld_weight = get_kl_weight(epoch, all_epochs, **kl_kwargs)
@@ -75,11 +73,11 @@ def train_step(epoch, model, train_eval, train_batch_it, opt, all_epochs, kl_kwa
         loss = recon_loss + kld_weight * kl_loss
         loss.backward()
 
-        # if frozen: leave gradient only for special tokens
+         # if frozen: leave gradient only for special tokens 
         model.mask_embedding_grad()
 
         # optimizer step
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.vae_params, 5)
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.vae_params, 5) 
         opt.step()
         opt.zero_grad()
 
@@ -89,7 +87,6 @@ def train_step(epoch, model, train_eval, train_batch_it, opt, all_epochs, kl_kwa
         pbar.widgets[5] = progressbar.FormatLabel(f'Loss (E/B) {e_loss:.2f} / {loss.item():.2f} || '
                                                   f'KL {e_kl_loss:.2f} / {kl_loss.item():.2f} || '
                                                   f'Recon {e_recon_loss:.2f} / {recon_loss.item():.2f}')
-
 
 def val_step(model, val_eval, val_batch_it, utterance_field):
     # EVALUATION

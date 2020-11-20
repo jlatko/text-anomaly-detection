@@ -1,15 +1,13 @@
-import sys
-
 import numpy as np
-import progressbar
 import torch
 from sacred import Experiment
 
+from utils.logger import Logger
+
 from evaluators.vae_evaluator import VAEEvaluator
 from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step
-from utils.model_utils import print_random_sentences, print_reconstructed_sentences, to_cpu
+from utils.model_utils import get_random_sentences, get_reconstructed_sentences, to_cpu
 from utils.corpus import get_corpus
-
 torch.manual_seed(12)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(12)
@@ -36,15 +34,15 @@ def default_config():
         'lr': 1e-3
     }
     n_epochs = 100
-    print_every = 5
-    subsample_rows = None # for testing
-    min_freq=1
+    print_every = 10
+    subsample_rows = None  # for testing
+    min_freq = 1
     model_kwargs = {
-        'set_other_to_random': True,
+        'set_other_to_random': False,
         'set_unk_to_random': True,
         'decode_with_embeddings': False, # [False, 'cosine', 'cdist']
-        'h_dim':  128,
-        'z_dim':  128,
+        'h_dim': 128,
+        'z_dim': 128,
         'p_word_dropout': 0.3,
         'max_sent_len':  max_len,
         'freeze_embeddings': True,
@@ -54,7 +52,6 @@ def default_config():
         'cycles': 5,
         'scale': 1
     }
-
 
 @ex.capture
 def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwargs, kl_kwargs,
@@ -87,6 +84,9 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
     train_eval = VAEEvaluator()
     val_eval = VAEEvaluator()
 
+    logger = Logger(model_name = "RNN", model = model, optimizer = opt,
+            train_eval = train_eval, val_eval = val_eval, data_path=data_path)
+
     for epoch in range(n_epochs):
         # Train
         train_step(epoch, model, train_eval, train_batch_it, opt, n_epochs, kl_kwargs)
@@ -96,26 +96,25 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
         val_step(model, val_eval, val_batch_it, utterance_field)
         val_eval.log_and_save_progress(epoch, 'val')
 
-        if (epoch + 1) % print_every == 0:
-            # print sentences
+        # save progress to file
+        logger.save_progress(epoch)
+
+        if (epoch+1) % print_every == 0:
+            # generate sentences
             model.eval()
-            print('train reconstruction (no dropout)')
             example_batch = next(iter(train_batch_it))
             res = model.forward(example_batch)
-            print_reconstructed_sentences(example_batch, to_cpu(res['y']).detach(), utterance_field)
+            rec_train = get_reconstructed_sentences(example_batch, to_cpu(res['y']).detach(), utterance_field)
 
             model.eval()
-            print('val reconstruction')
             example_batch = next(iter(val_batch_it))
             res = model.forward(example_batch)
-            print_reconstructed_sentences(example_batch, to_cpu(res['y']).detach(), utterance_field)
+            rec_val = get_reconstructed_sentences(example_batch, to_cpu(res['y']).detach(), utterance_field)
 
-            print('Random sentences from prior')
-            print_random_sentences(model, utterance_field)
-    train_eval.plot_training("Train")
-    val_eval.plot_training("Val")
+            rec_prior = get_random_sentences(model, utterance_field)
 
-
+            # save and log generated
+            logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)
 @ex.automain
 def main():
     train()
