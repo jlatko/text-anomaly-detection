@@ -1,11 +1,8 @@
-import sys
-
 import numpy as np
-import progressbar
 import torch
 from sacred import Experiment
 
-from logging.logger import Logger
+from utils.logger import Logger
 
 from evaluators.vae_evaluator import VAEEvaluator
 from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step
@@ -35,7 +32,7 @@ def default_config():
     word_embedding_size = 50
     lr = 1e-3
     n_epochs = 100
-    print_every = 10
+    print_every = 5
     subsample_rows = None # for testing
     min_freq=1
     model_kwargs = {
@@ -46,7 +43,9 @@ def default_config():
         'z_dim':  128,
         'p_word_dropout': 0.3,
         'max_sent_len':  max_len,
-        'freeze_embeddings': False,
+        'freeze_embeddings': True,
+        'rnn_dropout': 0.3,
+        'mask_pad': True,
     }
 
 @ex.capture
@@ -80,7 +79,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, lr,
     val_eval = VAEEvaluator()
 
     logger = Logger(model_name = "RNN", model = model, optimizer = opt, 
-            train_eval = train_eval, val_eval = val_eval)
+            train_eval = train_eval, val_eval = val_eval, data_path=data_path)
 
     for epoch in range(n_epochs):
         # Train
