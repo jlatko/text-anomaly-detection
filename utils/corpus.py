@@ -31,7 +31,13 @@ def get_corpus(source, split_sentences=False, punct=True, to_ascii=True, data_pa
     corpus_test = os.path.join(data_path, f'{corpus_name}_test.csv')
 
     # Load from cache
-    if os.path.isfile(corpus_train) and os.path.isfile(corpus_test):
+    if test_size == 1  and os.path.isfile(corpus_test):
+        df = pd.read_csv(corpus_test)
+        print('Loading cached data...')
+        print(len(df))
+        return df, f'{corpus_name}_test.csv'
+        
+    elif os.path.isfile(corpus_train) and os.path.isfile(corpus_test):
         df_train, df_val = pd.read_csv(corpus_train), pd.read_csv(corpus_test)
         print('Loading cached data...')
         print(len(df_train))
@@ -90,6 +96,14 @@ def get_corpus(source, split_sentences=False, punct=True, to_ascii=True, data_pa
     word_counts = sen_by_words.apply(len)
     sen_by_words = sen_by_words[(word_counts <= max_len) & (word_counts >= min_len)]
     df = sen_by_words.to_frame()
+
+    # no split
+    if test_size == 1:
+        if not save:
+            return df
+        print(len(df))
+        df.to_csv(corpus_test, index=False)
+        return df, f'{corpus_name}_test.csv'
 
     # split
     df_train, df_val = train_test_split(df, test_size=test_size, random_state=0)

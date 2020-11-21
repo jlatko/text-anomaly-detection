@@ -98,3 +98,31 @@ def val_step(model, val_eval, val_batch_it, utterance_field):
         recon_loss = res['recon_loss']
         kl_loss = res['kl_loss']
         val_eval.update(recon_loss.item(), kl_loss.item(), np.nan)
+
+def detect_anomalies(model, val_it, ood_it, samples_per_example=16):
+    model.eval()
+    pbar = progressbar.ProgressBar(fd=sys.stdout)
+    val_recon_losses = []
+    val_kl_losses = []
+    for single_input in pbar(val_it):
+        batch_input = single_input.repeat((1, samples_per_example))
+        res = model.forward(batch_input)
+        val_recon_losses.append(res['recon_loss'])
+        val_kl_losses.append(res['kl_loss'])
+
+    ood_recon_losses = []
+    ood_kl_losses = []
+    pbar = progressbar.ProgressBar(fd=sys.stdout)
+    for single_input in pbar(ood_it):
+        # sample_losses = []
+        # for i in range(samples_per_example):
+        #     res = model.forward(batch_input)
+            # if we want to have each of the realizations with loss
+        batch_input = single_input.repeat((1, samples_per_example))
+        res = model.forward(batch_input)
+        ood_recon_losses.append(res['recon_loss'])
+        ood_kl_losses.append(res['kl_loss'])
+    # import IPython
+    # IPython.embed()
+    # TODO: AUC ROC ?
+

@@ -1,11 +1,14 @@
+import os
+
 import numpy as np
 import torch
 from sacred import Experiment
 
+from datasets.data_loader import get_secondary_loader
 from utils.logger import Logger
 
 from evaluators.vae_evaluator import VAEEvaluator
-from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step
+from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step, detect_anomalies
 from utils.model_utils import get_random_sentences, get_reconstructed_sentences, to_cpu
 from utils.corpus import get_corpus
 torch.manual_seed(12)
@@ -20,6 +23,7 @@ ex = Experiment('text_vae')
 def default_config():
     data_path = 'data/'
     source = 'friends-corpus'
+    ood_source = 'supreme-corpus'
     # source = 'parliament-corpus'
     # source = 'IMDB Dataset.csv'
     split_sentences = True
@@ -37,6 +41,7 @@ def default_config():
     n_epochs = 100
     print_every = 1
     subsample_rows = None  # for testing
+    subsample_rows_ood = 10000
     min_freq = 1
     model_kwargs = {
         'set_other_to_random': False,
@@ -58,7 +63,8 @@ def default_config():
 @ex.capture
 def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwargs, kl_kwargs,
           n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
-          min_len, max_len, test_size, text_field, subsample_rows, data_path):
+          min_len, max_len, test_size, text_field, subsample_rows, data_path, 
+          ood_source, subsample_rows_ood):
     # prepare/load data
     _, _, train_source, val_source = get_corpus(source=source,
                                                 split_sentences=split_sentences,
@@ -81,6 +87,22 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
                                     optimizer_kwargs=optimizer_kwargs,
                                     min_freq=min_freq,
                                     model_kwargs=model_kwargs)
+
+    # prepare anomaly data
+    _, ood_source_csv = get_corpus(source=ood_source,
+                                split_sentences=split_sentences,
+                                punct=punct,
+                                to_ascii=to_ascii,
+                                data_path=data_path,
+                                min_len=min_len,
+                                max_len=max_len,
+                                test_size=1,
+                                text_field=text_field,
+                                subsample_rows=subsample_rows_ood)
+
+    # val_single_it = get_secondary_loader(utterance_field, os.path.join(data_path, val_source))
+    # ood_it = get_secondary_loader(utterance_field, os.path.join(data_path, ood_source_csv))
+
 
     print(model)
     train_eval = VAEEvaluator()
@@ -115,6 +137,8 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
 
             # save and log generated
             logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)
+
+            # detect_anomalies(model, val_single_it, ood_it)
 @ex.automain
 def main():
     train()

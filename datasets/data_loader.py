@@ -49,3 +49,19 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
     data_loaders = (train_loader, val_loader)
     return datasets, data_loaders, utterance_field
 
+
+def get_secondary_loader(utterance_field, source):
+    dataset = data.TabularDataset(path=source,
+                                format='csv',
+                                fields=[('utterance', utterance_field)],
+                                skip_header=True) # what about seed?
+
+    loader = data.BucketIterator(
+            dataset=dataset,
+            batch_size=1,
+            shuffle=False,
+            train=False,
+            repeat=False, 
+            sort=False)
+    iterator = BatchGenerator(loader, 'utterance')
+    return iterator
