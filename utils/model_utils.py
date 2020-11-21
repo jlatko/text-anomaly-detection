@@ -13,13 +13,19 @@ def get_random_sentences(model, utterance_field,  n=5):
         txt.append(' '.join([utterance_field.vocab.itos[i] for i in sent]))
     return txt
 
-def get_reconstructed_sentences(target, reconstruction, utterance_field, n=5):
-    target = target.numpy().transpose()
+def get_reconstructed_sentences(model, batch, utterance_field, n=5):
+    target = batch.numpy().transpose()
+    res = model.forward(batch)
+    reconstruction = to_cpu(res['y']).detach()
     reconstruction = reconstruction.numpy().argmax(axis=-1).transpose()
     txt = []
-    for t, r in zip(target[:n], reconstruction[:n]):
+    for t, r, z in zip(target[:n], reconstruction[:n], res['z'][:n]):
+        sample = model.sample_sentence(z, raw=True)[0]
         txt.append({
                 'target': ' '.join([utterance_field.vocab.itos[i] for i in t]),
-                'reconstruction': ' '.join([utterance_field.vocab.itos[i] for i in r])
+                'reconstruction': ' '.join([utterance_field.vocab.itos[i] for i in r]),
+                'z_sample': ' '.join([utterance_field.vocab.itos[i] for i in sample])
             })
     return txt
+
+

@@ -86,10 +86,12 @@ class Logger:
         for d in rec_train:
             print('T: ', d['target'])
             print('R: ', d['reconstruction'])
+            print('S: ', d['z_sample'])
         print('val reconstruction')
         for d in rec_val:
             print('T: ', d['target'])
             print('R: ', d['reconstruction'])
+            print('S: ', d['z_sample'])
         print('Random sentences from prior')
         for txt in rec_prior:
             print(txt)

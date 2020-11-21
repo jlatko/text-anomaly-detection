@@ -35,7 +35,7 @@ def default_config():
         'lr': 1e-3
     }
     n_epochs = 100
-    print_every = 2
+    print_every = 1
     subsample_rows = None  # for testing
     min_freq = 1
     model_kwargs = {
@@ -105,13 +105,11 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
             # generate sentences
             model.eval()
             example_batch = next(iter(train_batch_it))
-            res = model.forward(example_batch)
-            rec_train = get_reconstructed_sentences(example_batch, to_cpu(res['y']).detach(), utterance_field)
+            rec_train = get_reconstructed_sentences(model, example_batch, utterance_field)
 
             model.eval()
             example_batch = next(iter(val_batch_it))
-            res = model.forward(example_batch)
-            rec_val = get_reconstructed_sentences(example_batch, to_cpu(res['y']).detach(), utterance_field)
+            rec_val = get_reconstructed_sentences(model, example_batch, utterance_field)
 
             rec_prior = get_random_sentences(model, utterance_field)
 
