@@ -14,8 +14,8 @@ def get_random_sentences(model, utterance_field,  n=5):
     return txt
 
 def get_reconstructed_sentences(target, reconstruction, utterance_field, n=5):
-    target = target.numpy()
-    reconstruction = reconstruction.numpy().argmax(axis=-1)
+    target = target.numpy().transpose()
+    reconstruction = reconstruction.numpy().argmax(axis=-1).transpose()
     txt = []
     for t, r in zip(target[:n], reconstruction[:n]):
         txt.append({

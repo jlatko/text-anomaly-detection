@@ -13,7 +13,7 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
                                  tokenize=lambda s: ast.literal_eval(s),
                                  # tokenize='spacy', # what's the difference?
                                  fix_length=15,
-                                 batch_first=True,
+                                 batch_first=False,
                                  use_vocab=True,
                                  is_target=True,
                                  lower=True,
