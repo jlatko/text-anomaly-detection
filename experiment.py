@@ -41,7 +41,7 @@ def default_config():
     n_epochs = 100
     print_every = 1
     subsample_rows = None  # for testing
-    subsample_rows_ood = 10000
+    subsample_rows_ood = None
     min_freq = 1
     model_kwargs = {
         'set_other_to_random': False,
@@ -100,8 +100,8 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
                                 text_field=text_field,
                                 subsample_rows=subsample_rows_ood)
 
-    # val_single_it = get_secondary_loader(utterance_field, os.path.join(data_path, val_source))
-    # ood_it = get_secondary_loader(utterance_field, os.path.join(data_path, ood_source_csv))
+    val_single_it = get_secondary_loader(utterance_field, os.path.join(data_path, val_source))
+    ood_it = get_secondary_loader(utterance_field, os.path.join(data_path, ood_source_csv))
 
 
     print(model)
@@ -135,10 +135,14 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
 
             rec_prior = get_random_sentences(model, utterance_field)
 
+            # simple anomaly detection ROC AUC scores
+            auc, auc_kl, auc_recon = detect_anomalies(model, val_single_it, ood_it, kl_weight=0.1)
+
+            logger.save_and_log_anomaly(epoch, auc, auc_kl, auc_recon)
+
             # save and log generated
             logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)
 
-            # detect_anomalies(model, val_single_it, ood_it)
 @ex.automain
 def main():
     train()

@@ -14,6 +14,7 @@ class Logger:
         self.date = datetime.now()
         self.val_losses_desc = {}
         self.train_losses_desc = {}
+        self.anomaly_roc = {}
         self.generated_sentences = {}
 
         dir_path = f"{data_path}/models/{self.model_name}/runs/{self.date.strftime('%m-%d')}/{self.date.strftime('%H:%M')}"
@@ -80,6 +81,14 @@ class Logger:
             'optimizer': self.optimizer.state_dict()
         }
         torch.save(state, f"{self.dir_path}/parameters.pth")
+
+    def save_and_log_anomaly(self, epoch, auc, auc_kl, auc_recon):
+        print(f'Anomaly detection ROC AUC - recon: {auc_recon:.3f} | KL: {auc_kl:.3f} |  recon+KL: {auc:.3f}')
+        self.anomaly_roc[epoch] = {
+            'auc': auc,
+            'auc_kl': auc_kl,
+            'auc_recon': auc_recon,
+        }
 
     def save_and_log_sentences(self, epoch, rec_train, rec_val, rec_prior):
         print('train reconstruction (no dropout)')

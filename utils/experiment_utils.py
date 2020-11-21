@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import progressbar
 import torch
+from sklearn.metrics import roc_auc_score
 
 from datasets.batch_generator import BatchGenerator
 from datasets.data_loader import init_data_loading
@@ -99,7 +100,7 @@ def val_step(model, val_eval, val_batch_it, utterance_field):
         kl_loss = res['kl_loss']
         val_eval.update(recon_loss.item(), kl_loss.item(), np.nan)
 
-def detect_anomalies(model, val_it, ood_it, samples_per_example=16):
+def detect_anomalies(model, val_it, ood_it, samples_per_example=16, kl_weight=1):
     model.eval()
     pbar = progressbar.ProgressBar(fd=sys.stdout)
     val_recon_losses = []
@@ -107,8 +108,8 @@ def detect_anomalies(model, val_it, ood_it, samples_per_example=16):
     for single_input in pbar(val_it):
         batch_input = single_input.repeat((1, samples_per_example))
         res = model.forward(batch_input)
-        val_recon_losses.append(res['recon_loss'])
-        val_kl_losses.append(res['kl_loss'])
+        val_recon_losses.append(res['recon_loss'].item())
+        val_kl_losses.append(res['kl_loss'].item())
 
     ood_recon_losses = []
     ood_kl_losses = []
@@ -120,9 +121,16 @@ def detect_anomalies(model, val_it, ood_it, samples_per_example=16):
             # if we want to have each of the realizations with loss
         batch_input = single_input.repeat((1, samples_per_example))
         res = model.forward(batch_input)
-        ood_recon_losses.append(res['recon_loss'])
-        ood_kl_losses.append(res['kl_loss'])
-    # import IPython
-    # IPython.embed()
-    # TODO: AUC ROC ?
+        ood_recon_losses.append(res['recon_loss'].item())
+        ood_kl_losses.append(res['kl_loss'].item())
 
+    labels = np.concatenate([np.zeros(len(val_recon_losses)), np.ones(len(ood_recon_losses))])
+    recon = np.array(val_recon_losses + ood_recon_losses)
+    kl = np.array(val_kl_losses + ood_kl_losses)
+    losses = recon + kl_weight * kl
+
+    auc = roc_auc_score(labels, losses)
+    auc_kl = roc_auc_score(labels, kl)
+    auc_recon = roc_auc_score(labels, recon)
+
+    return auc, auc_kl, auc_recon
