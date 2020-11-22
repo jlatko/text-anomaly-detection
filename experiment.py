@@ -42,8 +42,8 @@ def default_config():
     }
     n_epochs = 100
     print_every = 1
-    subsample_rows = 100  # for testing
-    subsample_rows_ood = 100
+    subsample_rows = None  # for testing
+    subsample_rows_ood = None
     min_freq = 1
     model_kwargs = {
         'set_other_to_random': False,
@@ -91,18 +91,18 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
                                     model_kwargs=model_kwargs)
 
     # prepare anomaly data
-    _, ood_source_csv = get_corpus(source=ood_source,
+    _, _, _, ood_source_csv = get_corpus(source=ood_source,
                                 split_sentences=split_sentences,
                                 punct=punct,
                                 to_ascii=to_ascii,
                                 data_path=data_path,
                                 min_len=min_len,
                                 max_len=max_len,
-                                test_size=1,
+                                # test_size=1,
+                                test_size=test_size, # so it's always the same for ood and val
                                 text_field=text_field,
                                 subsample_rows=subsample_rows_ood)
 
-    # val_single_it = get_secondary_loader(utterance_field, os.path.join(data_path, val_source), batch_size=batch_size)
     ood_it = get_secondary_loader(utterance_field, os.path.join(data_path, ood_source_csv), batch_size=batch_size)
     # TODO: consider including secondary dataset in "build vocab"
 
