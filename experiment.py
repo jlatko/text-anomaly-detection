@@ -1,3 +1,4 @@
+import json
 import os
 
 import numpy as np
@@ -24,6 +25,7 @@ def default_config():
     data_path = 'data/'
     source = 'friends-corpus'
     ood_source = 'supreme-corpus'
+    tags = ''
     # source = 'parliament-corpus'
     # source = 'IMDB Dataset.csv'
     split_sentences = True
@@ -64,7 +66,7 @@ def default_config():
 def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwargs, kl_kwargs,
           n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
           min_len, max_len, test_size, text_field, subsample_rows, data_path, 
-          ood_source, subsample_rows_ood):
+          ood_source, subsample_rows_ood, tags):
     # prepare/load data
     _, _, train_source, val_source = get_corpus(source=source,
                                                 split_sentences=split_sentences,
@@ -110,6 +112,14 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
 
     logger = Logger(model_name = "RNN", model = model, optimizer = opt,
             train_eval = train_eval, val_eval = val_eval, data_path=data_path)
+    # TODO: make it into something nicer
+    tags += '\n'.join([
+        source,
+        ood_source,
+        json.dumps(kl_kwargs),
+        json.dumps(model_kwargs)
+    ])
+    logger.save_tags(tags)
 
     for epoch in range(n_epochs):
         # Train
