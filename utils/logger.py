@@ -3,6 +3,8 @@ import json
 import numpy as np
 from datetime import datetime
 import torch
+import shutil
+
 
 class Logger:
     def __init__(self, model_name, model, optimizer, train_eval, val_eval, data_path):
@@ -25,9 +27,15 @@ class Logger:
         os.makedirs(f"{dir_path}/{new_dir}")
         self.dir_path = f"{dir_path}/{new_dir}"
 
-    def save_tags(self, tags):
+    def save_tags_and_script(self, tags):
         with open(f'{self.dir_path}/tags.txt', 'w') as fp:
             fp.write(tags)
+
+        try:
+            shutil.copy('experiment.py', self.dir_path)
+        except Exception as e:
+            print('saving experiment script failed')
+            print(e)
 
     def save_progress(self, epoch):
         # to chyba niepotrzebne

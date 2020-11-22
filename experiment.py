@@ -42,8 +42,8 @@ def default_config():
     }
     n_epochs = 100
     print_every = 1
-    subsample_rows = None  # for testing
-    subsample_rows_ood = None
+    subsample_rows = 100  # for testing
+    subsample_rows_ood = 100
     min_freq = 1
     model_kwargs = {
         'set_other_to_random': False,
@@ -119,7 +119,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
         json.dumps(kl_kwargs),
         json.dumps(model_kwargs)
     ])
-    logger.save_tags(tags)
+    logger.save_tags_and_script(tags)
 
     for epoch in range(n_epochs):
         # Train
