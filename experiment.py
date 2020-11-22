@@ -100,9 +100,9 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
                                 text_field=text_field,
                                 subsample_rows=subsample_rows_ood)
 
-    val_single_it = get_secondary_loader(utterance_field, os.path.join(data_path, val_source))
-    ood_it = get_secondary_loader(utterance_field, os.path.join(data_path, ood_source_csv))
-
+    # val_single_it = get_secondary_loader(utterance_field, os.path.join(data_path, val_source), batch_size=batch_size)
+    ood_it = get_secondary_loader(utterance_field, os.path.join(data_path, ood_source_csv), batch_size=batch_size)
+    # TODO: consider including secondary dataset in "build vocab"
 
     print(model)
     train_eval = VAEEvaluator()
@@ -136,7 +136,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
             rec_prior = get_random_sentences(model, utterance_field)
 
             # simple anomaly detection ROC AUC scores
-            auc, auc_kl, auc_recon = detect_anomalies(model, val_single_it, ood_it, kl_weight=0.1)
+            auc, auc_kl, auc_recon = detect_anomalies(model, val_batch_it, ood_it, kl_weight=0.1)
 
             logger.save_and_log_anomaly(epoch, auc, auc_kl, auc_recon)
 

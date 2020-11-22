@@ -105,24 +105,22 @@ def detect_anomalies(model, val_it, ood_it, samples_per_example=16, kl_weight=1)
     pbar = progressbar.ProgressBar(fd=sys.stdout)
     val_recon_losses = []
     val_kl_losses = []
-    for single_input in pbar(val_it):
-        batch_input = single_input.repeat((1, samples_per_example))
-        res = model.forward(batch_input)
-        val_recon_losses.append(res['recon_loss'].item())
-        val_kl_losses.append(res['kl_loss'].item())
+    for batch_input in pbar(val_it):
+        res = model.forward_multiple(batch_input, n_times=samples_per_example)
+        for loss in res['recon_losses']:
+            val_recon_losses.append(loss.item())
+        for loss in res['kl_losses']:
+            val_kl_losses.append(loss.item())
 
     ood_recon_losses = []
     ood_kl_losses = []
     pbar = progressbar.ProgressBar(fd=sys.stdout)
-    for single_input in pbar(ood_it):
-        # sample_losses = []
-        # for i in range(samples_per_example):
-        #     res = model.forward(batch_input)
-            # if we want to have each of the realizations with loss
-        batch_input = single_input.repeat((1, samples_per_example))
-        res = model.forward(batch_input)
-        ood_recon_losses.append(res['recon_loss'].item())
-        ood_kl_losses.append(res['kl_loss'].item())
+    for batch_input in pbar(ood_it):
+        res = model.forward_multiple(batch_input, n_times=samples_per_example)
+        for loss in res['recon_losses']:
+            ood_recon_losses.append(loss.item())
+        for loss in res['kl_losses']:
+            ood_kl_losses.append(loss.item())
 
     labels = np.concatenate([np.zeros(len(val_recon_losses)), np.ones(len(ood_recon_losses))])
     recon = np.array(val_recon_losses + ood_recon_losses)

@@ -37,7 +37,8 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
     # vec = vocab.Vectors(f'glove.6B.{WORD_EMBEDDING_SIZE}d.txt',
     #                     GLOVE_DIR)  # download here: https://nlp.stanford.edu/projects/glove/
     vec = GloVe('6B', dim=emb_size, cache=data_path)
-    utterance_field.build_vocab(train_dataset, val_dataset, vectors=vec, min_freq=min_freq) # what's the difference?
+    utterance_field.build_vocab(train_dataset, vectors=vec, min_freq=min_freq)
+    # utterance_field.build_vocab(train_dataset, val_dataset, vectors=vec, min_freq=min_freq)
 
     # print(utterance_field.vocab.vectors[utterance_field.vocab.stoi['the']])
 
@@ -50,7 +51,7 @@ def init_data_loading(data_path, train_batch_size, val_batch_size, emb_size,
     return datasets, data_loaders, utterance_field
 
 
-def get_secondary_loader(utterance_field, source):
+def get_secondary_loader(utterance_field, source, batch_size):
     dataset = data.TabularDataset(path=source,
                                 format='csv',
                                 fields=[('utterance', utterance_field)],
@@ -58,7 +59,7 @@ def get_secondary_loader(utterance_field, source):
 
     loader = data.BucketIterator(
             dataset=dataset,
-            batch_size=1,
+            batch_size=batch_size,
             shuffle=False,
             train=False,
             repeat=False, 

@@ -160,11 +160,11 @@ class RNN_VAE(nn.Module):
 
         return mu, logvar
 
-    def sample_z(self, mu, logvar):
+    def sample_z(self, mu, logvar, n_times=1):
         """
         Reparameterization trick: z = mu + std*eps; eps ~ N(0, I)
         """
-        eps = Variable(torch.randn(self.z_dim))
+        eps = Variable(torch.randn(n_times, self.z_dim))
         eps = to_gpu(eps)
         return mu + torch.exp(logvar/2) * eps
 
@@ -198,7 +198,47 @@ class RNN_VAE(nn.Module):
 
         return y
 
-    def forward(self, sentence):
+    def get_recon_loss(self, sentence, y):
+        mbsize = sentence.size(1)
+        pad_words = Variable(torch.LongTensor([self.PAD_IDX])).repeat(1, mbsize)
+        pad_words = to_gpu(pad_words)
+        dec_targets = torch.cat([sentence[1:], pad_words], dim=0)
+        recon_loss = F.cross_entropy(
+            y.view(-1, self.n_vocab), dec_targets.view(-1), size_average=True, weight=self.weights
+        )
+        return recon_loss
+
+    def get_kl_loss(self, mu, logvar):
+        return torch.mean(0.5 * torch.sum(torch.exp(logvar) + mu ** 2 - 1 - logvar, 1))
+
+    def forward_multiple(self, x, n_times=16):
+        # encode
+        x = to_gpu(x)
+        mu, logvar = self.forward_encoder(x)
+
+        # sample and decode
+        zs = []
+        ys = []
+        kl_losses = []
+        recon_losses = []
+
+        for i in range(mu.size(0)):
+            z = self.sample_z(mu[i], logvar[i], n_times=n_times)
+            target = x[:,i:i+1].repeat(1, n_times)
+            y = self.forward_decoder(target, z)
+            recon_losses.append(self.get_recon_loss(target, y))
+            kl_losses.append(self.get_kl_loss(mu[i:i+1], logvar[i:i+1]))
+
+        return {
+            'recon_losses': recon_losses,
+            'kl_losses': kl_losses,
+            'mu': mu,
+            'logvar': logvar,
+            'zs': zs,
+            'ys': ys
+        }
+
+    def forward(self, x):
         """
         Params:
         -------
@@ -209,28 +249,18 @@ class RNN_VAE(nn.Module):
         recon_loss: reconstruction loss of VAE.
         kl_loss: KL-div loss of VAE.
         """
-        sentence = to_gpu(sentence)
-        mbsize = sentence.size(1)
+        # Encode
+        x = to_gpu(x)
+        mu, logvar = self.forward_encoder(x)
 
-        pad_words = Variable(torch.LongTensor([self.PAD_IDX])).repeat(1, mbsize)
-        pad_words = to_gpu(pad_words)
+        # sample and decode
+        z = self.sample_z(mu, logvar, n_times=mu.size(0))
+        # z = self.sample_z(mu, logvar) # single eps for whole batch
+        y = self.forward_decoder(x, z)
 
-        enc_inputs = sentence
-        dec_inputs = sentence
-        dec_targets = torch.cat([sentence[1:], pad_words], dim=0)
-
-        # Encoder: sentence -> z
-        mu, logvar = self.forward_encoder(enc_inputs)
-        z = self.sample_z(mu, logvar)
-
-        # Decoder: sentence -> y
-        y = self.forward_decoder(dec_inputs, z)
-
-        # TODO: mask out <pad>
-        recon_loss = F.cross_entropy(
-            y.view(-1, self.n_vocab), dec_targets.view(-1), size_average=True, weight=self.weights
-        )
-        kl_loss = torch.mean(0.5 * torch.sum(torch.exp(logvar) + mu**2 - 1 - logvar, 1))
+        # get losses
+        recon_loss = self.get_recon_loss(x, y)
+        kl_loss = self.get_kl_loss(mu, logvar)
 
         return {
             'recon_loss': recon_loss,
