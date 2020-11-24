@@ -101,6 +101,8 @@ class Logger:
             'auc_kl': auc_kl,
             'auc_recon': auc_recon,
         }
+        with open(f'{self.dir_path}/anomaly.json', 'w') as fp:
+            json.dump(self.anomaly_roc, fp, indent=2)
 
     def save_and_log_sentences(self, epoch, rec_train, rec_val, rec_prior):
         print('train reconstruction (no dropout)')
