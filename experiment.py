@@ -146,9 +146,9 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
             rec_prior = get_random_sentences(model, utterance_field)
 
             # simple anomaly detection ROC AUC scores
-            auc, auc_kl, auc_recon = detect_anomalies(model, val_batch_it, ood_it, kl_weight=0.1)
+            auc, auc_kl, auc_recon, recon, kl = detect_anomalies(model, val_batch_it, ood_it, kl_weight=0.1)
 
-            logger.save_and_log_anomaly(epoch, auc, auc_kl, auc_recon)
+            logger.save_and_log_anomaly(epoch, auc, auc_kl, auc_recon, recon, kl )
 
             # save and log generated
             logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)

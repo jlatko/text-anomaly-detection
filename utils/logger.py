@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime
 import torch
 import shutil
+import pickle
 
 
 class Logger:
@@ -18,6 +19,8 @@ class Logger:
         self.train_losses_desc = {}
         self.anomaly_roc = {}
         self.generated_sentences = {}
+        self.anomaly_scores = {}
+
 
         dir_path = f"{data_path}/models/{self.model_name}/runs/{self.date.strftime('%m-%d')}/{self.date.strftime('%H:%M')}"
         if os.path.isdir(dir_path):
@@ -94,7 +97,7 @@ class Logger:
         }
         torch.save(state, f"{self.dir_path}/parameters.pth")
 
-    def save_and_log_anomaly(self, epoch, auc, auc_kl, auc_recon):
+    def save_and_log_anomaly(self, epoch, auc, auc_kl, auc_recon, recon, kl):
         print(f'Anomaly detection ROC AUC - recon: {auc_recon:.3f} | KL: {auc_kl:.3f} |  recon+KL: {auc:.3f}')
         self.anomaly_roc[epoch] = {
             'auc': auc,
@@ -103,6 +106,13 @@ class Logger:
         }
         with open(f'{self.dir_path}/anomaly.json', 'w') as fp:
             json.dump(self.anomaly_roc, fp, indent=2)
+
+        self.anomaly_scores[epoch] = {
+            'recon': recon,
+            'kl': kl,
+        }
+        with open(f'{self.dir_path}/anomaly_scores.pickle', 'wb') as fp:
+            pickle.dump(self.anomaly_scores, fp)
 
     def save_and_log_sentences(self, epoch, rec_train, rec_val, rec_prior):
         print('train reconstruction (no dropout)')

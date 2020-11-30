@@ -131,4 +131,4 @@ def detect_anomalies(model, val_it, ood_it, samples_per_example=16, kl_weight=1)
     auc_kl = roc_auc_score(labels, kl)
     auc_recon = roc_auc_score(labels, recon)
 
-    return auc, auc_kl, auc_recon
+    return auc, auc_kl, auc_recon, recon, kl
