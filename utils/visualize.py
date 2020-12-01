@@ -12,8 +12,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 def get_runs_and_cfgs():
-  run  = []
-  cfg = []
+  runs  = []
+  cfgs = []
   for run in glob.glob('data/models/*/*/*/*/*'): 
     runs.append(run)
     with open(f"{run}/tags.txt", 'r') as fp:
