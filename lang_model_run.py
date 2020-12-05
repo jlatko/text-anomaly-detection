@@ -1,8 +1,8 @@
 from experiment import train_lm
 
 if __name__ == '__main__':
-    data_path = 'data'
-    tags = 'parliament vs friends scale=0.2 bs=32 \n'
+    data_path = '../text-anomaly-detection/data'
+    tags = 'LM parliament vs friends bs=32 \n'
     # source = 'friends-corpus'
     # source = 'supreme-corpus'
     ood_source = 'friends-corpus'
@@ -22,8 +22,8 @@ if __name__ == '__main__':
     }
     n_epochs = 100
     print_every = 1
-    subsample_rows = 5000  # for testing
-    subsample_rows_ood = 5000
+    subsample_rows = None  # for testing
+    subsample_rows_ood = None
     min_freq = 1
     decode = False
     model_kwargs = {
@@ -32,6 +32,7 @@ if __name__ == '__main__':
         'decode_with_embeddings': decode,  # [False, 'cosine', 'cdist']
         # 'p_word_dropout': 0.3,
         'max_sent_len': max_len,
+        'h_dim': 256,
         'freeze_embeddings': False,
         'rnn_dropout': 0.3,
         'mask_pad': True,

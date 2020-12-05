@@ -82,11 +82,11 @@ class RNN_LanguageModel(nn.Module):
             self.emb_grad_mask = None
 
         if decode_with_embeddings:
-            self.lm = nn.GRU(self.emb_dim, self.emb_dim * 2, dropout=rnn_dropout)
-            self.lm_fc = nn.Linear(self.emb_dim * 2, self.emb_dim)
+            self.lm = nn.GRU(self.emb_dim, self.h_dim, dropout=rnn_dropout)
+            self.lm_fc = nn.Linear( self.h_dim, self.emb_dim)
         else:
-            self.lm = nn.GRU(self.emb_dim, self.emb_dim * 2, dropout=rnn_dropout)
-            self.lm_fc = nn.Linear(self.emb_dim * 2, n_vocab)
+            self.lm = nn.GRU(self.emb_dim, self.h_dim, dropout=rnn_dropout)
+            self.lm_fc = nn.Linear( self.h_dim, n_vocab)
 
         self.lm_params = filter(lambda p: p.requires_grad, self.lm.parameters())
 

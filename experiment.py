@@ -10,6 +10,7 @@ from utils.logger import Logger
 
 from evaluators.vae_evaluator import VAEEvaluator
 from utils.experiment_utils_lm import setup_model_and_dataloading_lm, train_step_lm, val_step_lm, detect_anomalies_lm
+from utils.experiment_utils import setup_model_and_dataloading, train_step, val_step, detect_anomalies
 from utils.model_utils import get_random_sentences, get_reconstructed_sentences, to_cpu, get_sentences_lm
 from utils.corpus import get_corpus
 
@@ -20,13 +21,16 @@ np.random.seed(12)
 
 ex = Experiment('text_vae')
 
+
 @ex.config
 def default_config():
     data_path = 'data/'
-    source = 'friends-corpus'
-    ood_source = 'supreme-corpus'
-    tags = ''
-    # source = 'parliament-corpus'
+    # data_path = '../text-anomaly-detection/data'
+    tags = 'parliament vs friends scale=0.05 bs=32 \n'
+    #source = 'friends-corpus'
+    #source = 'supreme-corpus'
+    ood_source = 'friends-corpus'
+    source = 'parliament-corpus'
     # source = 'IMDB Dataset.csv'
     split_sentences = True
     punct = False
@@ -35,7 +39,7 @@ def default_config():
     max_len = 15
     test_size = 0.1
     text_field = 'text'
-    batch_size = 16
+    batch_size = 32
     word_embedding_size = 50
     optimizer_kwargs = {
         'lr': 1e-3
@@ -45,21 +49,22 @@ def default_config():
     subsample_rows = None  # for testing
     subsample_rows_ood = None
     min_freq = 1
+    decode=False
     model_kwargs = {
         'set_other_to_random': False,
         'set_unk_to_random': True,
-        'decode_with_embeddings': False,  # [False, 'cosine', 'cdist']
+        'decode_with_embeddings': decode, # [False, 'cosine', 'cdist']
         'h_dim': 256,
         'z_dim': 256,
         'p_word_dropout': 0.3,
-        'max_sent_len': max_len,
-        'freeze_embeddings': True,
+        'max_sent_len':  max_len,
+        'freeze_embeddings': False,
         'rnn_dropout': 0.3,
         'mask_pad': True,
     }
     kl_kwargs = {
-        'cycles': 5,
-        'scale': 0.01
+        'cycles': 4,
+        'scale': 0.05
     }
 
 
@@ -155,7 +160,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
             logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)
 
 
-# @ex.capture
+@ex.capture
 def train_lm(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwargs, kl_kwargs,
              n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
              min_len, max_len, test_size, text_field, subsample_rows, data_path,
