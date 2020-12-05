@@ -136,3 +136,5 @@ class Logger:
         with open(f'{self.dir_path}/generated_sentences.json', 'w') as fp:
             json.dump(self.generated_sentences, fp, indent=2)
 
+    def load_model(path):
+        return model.load_state_dict(torch.load(path))
