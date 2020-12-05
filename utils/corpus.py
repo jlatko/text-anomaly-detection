@@ -52,7 +52,6 @@ def get_corpus(source, split_sentences=False, punct=True, to_ascii=True, data_pa
         print('Downloading dataset...')
         corp = Corpus(filename=download(name))
         df = corp.get_utterances_dataframe()
-
     # get only text
     df = df.rename(columns={text_field: "utterance"})[["utterance"]]
     

@@ -22,8 +22,8 @@ if __name__ == '__main__':
     }
     n_epochs = 100
     print_every = 1
-    subsample_rows = None  # for testing
-    subsample_rows_ood = None
+    subsample_rows = 5000  # for testing
+    subsample_rows_ood = 5000
     min_freq = 1
     decode = False
     model_kwargs = {

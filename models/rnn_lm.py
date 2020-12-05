@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from itertools import chain
 
 from utils.model_utils import to_gpu
 
@@ -156,3 +155,61 @@ class RNN_LanguageModel(nn.Module):
             y.view(-1, self.n_vocab), dec_targets.view(-1), size_average=True, weight=self.weights
         )
         return recon_loss
+
+    def sample_sentence(self, raw=False, temp=1):
+        """
+        Sample single sentence from p(x|z,c) according to given temperature.
+        `raw = True` means this returns sentence as in dataset which is useful
+        to train discriminator. `False` means that this will return list of
+        `word_idx` which is useful for evaluation.
+        """
+        word = torch.LongTensor([self.START_IDX])
+        word = word.cuda() if self.gpu else word
+        word = Variable(word)  # '<start>'
+
+        outputs = []
+
+        if raw:
+            outputs.append(self.START_IDX)
+
+        for i in range(self.MAX_SENT_LEN):
+            emb = self.word_emb(word).view(1, 1, -1)
+            emb = torch.cat([emb], 2)
+
+            output, h = self.lm(emb, None)
+            y = self.decode(output.view((1, -1))).view(-1)
+            y = F.softmax(y / temp, dim=0)
+
+            idx = torch.multinomial(y, num_samples=1)
+
+            word = Variable(torch.LongTensor([int(idx)]))
+            word = word.cuda() if self.gpu else word
+
+            idx = int(idx)
+
+            if not raw and idx == self.EOS_IDX:
+                break
+
+            outputs.append(idx)
+
+        # Back to default state: train
+        if raw:
+            outputs = Variable(torch.LongTensor(outputs)).unsqueeze(0)
+            return to_gpu(outputs)
+        else:
+            return outputs
+
+    def forward_multiple(self, x, n_times=16):
+        x = to_gpu(x)
+        ys = []
+        recon_losses = []
+
+        for i in range(x.size(1)):
+            target = x[:, i:i + 1].repeat(1, n_times)
+            y = self.forward(target)['y']
+            recon_losses.append(self.get_recon_loss(target, y))
+            ys.append(y)
+        return {
+            'recon_losses': recon_losses,
+            'ys': ys
+        }

@@ -10,7 +10,7 @@ from utils.logger import Logger
 
 from evaluators.vae_evaluator import VAEEvaluator
 from utils.experiment_utils_lm import setup_model_and_dataloading_lm, train_step_lm, val_step_lm, detect_anomalies_lm
-from utils.model_utils import get_random_sentences, get_reconstructed_sentences, to_cpu
+from utils.model_utils import get_random_sentences, get_reconstructed_sentences, to_cpu, get_sentences_lm
 from utils.corpus import get_corpus
 
 torch.manual_seed(12)
@@ -19,7 +19,6 @@ if torch.cuda.is_available():
 np.random.seed(12)
 
 ex = Experiment('text_vae')
-
 
 @ex.config
 def default_config():
@@ -156,7 +155,7 @@ def train(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwarg
             logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)
 
 
-@ex.capture
+# @ex.capture
 def train_lm(source, batch_size, word_embedding_size, model_kwargs, optimizer_kwargs, kl_kwargs,
              n_epochs, print_every, split_sentences, punct, to_ascii, min_freq,
              min_len, max_len, test_size, text_field, subsample_rows, data_path,
@@ -231,20 +230,18 @@ def train_lm(source, batch_size, word_embedding_size, model_kwargs, optimizer_kw
             # generate sentences
             model.eval()
             example_batch = next(iter(train_batch_it))
-            rec_train = get_reconstructed_sentences(model, example_batch, utterance_field)
+            rec_train = get_sentences_lm(model, example_batch, utterance_field)
 
             model.eval()
             example_batch = next(iter(val_batch_it))
-            rec_val = get_reconstructed_sentences(model, example_batch, utterance_field)
-
-            rec_prior = get_random_sentences(model, utterance_field)
+            rec_val = get_sentences_lm(model, example_batch, utterance_field)
 
             # simple anomaly detection ROC AUC scores
             auc, auc_recon, recon = detect_anomalies_lm(model, val_batch_it, ood_it)
             logger.save_and_log_anomaly(epoch, auc, 0, auc_recon, recon, 0)
 
             # save and log generated
-            logger.save_and_log_sentences(epoch, rec_train, rec_val, rec_prior)
+            logger.save_and_log_sentences(epoch, rec_train, rec_val, [])
 
 
 @ex.automain

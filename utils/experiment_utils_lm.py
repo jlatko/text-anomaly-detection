@@ -135,14 +135,14 @@ def detect_anomalies_lm(model, val_it, ood_it):
     pbar = progressbar.ProgressBar(fd=sys.stdout)
     val_recon_losses = []
     for batch_input in pbar(val_it):
-        res = model.forward(batch_input)
+        res = model.forward_multiple(batch_input)
         for loss in res['recon_losses']:
             val_recon_losses.append(loss.item())
 
     ood_recon_losses = []
     pbar = progressbar.ProgressBar(fd=sys.stdout)
     for batch_input in pbar(ood_it):
-        res = model.forward(batch_input)
+        res = model.forward_multiple(batch_input)
         for loss in res['recon_losses']:
             ood_recon_losses.append(loss.item())
 
