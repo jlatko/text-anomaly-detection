@@ -83,6 +83,28 @@ class Logger:
             'optimizer': self.optimizer.state_dict()
         }
         torch.save(state, f"{self.dir_path}/parameters.pth")
+        
+    def save_loss_only(self, epoch):
+        recon_loss, kl_loss, loss = self.train_eval.mean_losses()
+        self.train_losses_desc[epoch] = {
+            "name": 'train',
+            "epoch": epoch,
+            "recon_loss": recon_loss,
+            "kl_loss": kl_loss,
+            "loss": loss,
+        }
+        recon_loss, kl_loss, loss = self.val_eval.mean_losses()
+        self.val_losses_desc[epoch] = {
+            "name": 'val',
+            "epoch": epoch,
+            "recon_loss": recon_loss,
+            "kl_loss": kl_loss,
+            "loss": loss,
+        }
+        with open(f'{self.dir_path}/train_losses_desc.json', 'w') as fp:
+            json.dump(self.train_losses_desc, fp, indent=2)
+        with open(f'{self.dir_path}/val_losses_desc.json', 'w') as fp:
+            json.dump(self.val_losses_desc, fp, indent=2)
 
     def save_and_log_anomaly(self, epoch, auc, auc_kl, auc_recon, recon, kl):
         print(f'Anomaly detection ROC AUC - recon: {auc_recon:.3f} | KL: {auc_kl:.3f} |  recon+KL: {auc:.3f}')
