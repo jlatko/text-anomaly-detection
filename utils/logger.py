@@ -21,7 +21,8 @@ class Logger:
         self.generated_sentences = {}
         self.anomaly_scores = {}
 
-        dir_path = f"{data_path}/models/{self.model_name}/runs/{self.date.strftime('%m-%d')}/{self.date.strftime('%H-%M')}"
+
+        dir_path = f"{data_path}/models/{self.model_name}/runs/{self.date.strftime('%m-%d')}/{self.date.strftime('%H:%M')}"
         if os.path.isdir(dir_path):
             new_dir = str(int(max(os.listdir(dir_path))) + 1)
         else:
@@ -121,3 +122,6 @@ class Logger:
         }
         with open(f'{self.dir_path}/generated_sentences.json', 'w') as fp:
             json.dump(self.generated_sentences, fp, indent=2)
+
+    def load_model(path):
+        return self.model.load_state_dict(torch.load(path))

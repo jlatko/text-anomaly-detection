@@ -24,9 +24,9 @@ ex = Experiment('text_vae')
 
 @ex.config
 def default_config():
-    data_path = 'data/'
-    # data_path = '../text-anomaly-detection/data'
-    tags = 'parliament vs friends scale=0.05 bs=32 \n'
+    # data_path = 'data/'
+    data_path = '../text-anomaly-detection/data'
+    tags = 'parliament vs friends scale=0 bs=32 \n'
     #source = 'friends-corpus'
     #source = 'supreme-corpus'
     ood_source = 'friends-corpus'
@@ -56,6 +56,7 @@ def default_config():
         'decode_with_embeddings': decode, # [False, 'cosine', 'cdist']
         'h_dim': 256,
         'z_dim': 256,
+        # 'p_word_dropout': 0.5,
         'p_word_dropout': 0.3,
         'max_sent_len':  max_len,
         'freeze_embeddings': False,
@@ -64,7 +65,7 @@ def default_config():
     }
     kl_kwargs = {
         'cycles': 4,
-        'scale': 0.05
+        'scale': 0.2
     }
 
 

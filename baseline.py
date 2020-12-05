@@ -1,5 +1,6 @@
 import json
 import os
+import pickle
 
 import numpy as np
 from sacred import Experiment
@@ -29,8 +30,8 @@ def get_log_likelihoods(vectorized, frequencies): # normalized by length
 @ex.config
 def default_config():
     data_path = 'data/'
-    s1 = 'friends-corpus'
-    s2 = 'supreme-corpus'
+    s1 = 'parliament-corpus'
+    s2 = 'friends-corpus'
     split_sentences = True
     punct = False
     to_ascii = True
@@ -99,8 +100,12 @@ def train(data_path, s1, s2, split_sentences, punct, to_ascii, min_freq,
     ll1_f2 = get_log_likelihoods(v1_val, freq2) 
     ll2_f2 = get_log_likelihoods(v2_val, freq2) 
     ll1_general = get_log_likelihoods(v1_val, general_freq) 
-    ll2_general = get_log_likelihoods(v2_val, general_freq) 
+    ll2_general = get_log_likelihoods(v2_val, general_freq)
 
+    with open(f'{data_path}/general_likelihoods_{s1}.pickle', 'wb') as fh:
+        pickle.dump(ll1_general, fh)
+    with open(f'{data_path}/general_likelihoods_{s2}.pickle', 'wb') as fh:
+        pickle.dump(ll2_general, fh)
 
     print('Likelihood approach (normalized by length)')
     x = np.concatenate([ll1_f1, ll2_f1])
