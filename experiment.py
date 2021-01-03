@@ -26,7 +26,7 @@ ex = Experiment('text_vae')
 def default_config():
     # data_path = 'data/'
     data_path = '../text-anomaly-detection/data'
-    tags = 'parliament vs friends scale=0 bs=32 \n'
+    tags = 'LSTM parliament vs friends scale=0.2 bs=32 \n'
     #source = 'friends-corpus'
     #source = 'supreme-corpus'
     ood_source = 'friends-corpus'

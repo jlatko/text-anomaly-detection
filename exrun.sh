@@ -7,9 +7,7 @@ CONDA_ENV="vae"
 GPU='0'
 #
 PARAM_UPDATES="with
-    'source=friends-corpus'
-    'ood_source=parliament-corpus'
-    'tags=friends vs parliament scale=0.2 bs=32 \n'
+    'tags=parliament vs friends scale=0.01 bs=32 \n'
     "
 # Execute
 FLAG_EXPERIMENT_NAME='--name "experiment"'
@@ -20,9 +18,7 @@ eval $EXEC
 
 
 PARAM_UPDATES="with
-    'source=supreme-corpus'
-    'ood_source=friends-corpus'
-    'tags=supreme vs friends scale=0.2 bs=32 \n'
+    'tags=parliament vs friends scale=0.5 bs=32 \n'
     "
 # Execute
 FLAG_EXPERIMENT_NAME='--name "experiment"'
@@ -32,4 +28,4 @@ echo executing $EXEC ...
 eval $EXEC
 
 #env CUDA_VISIBLE_DEVICES=8 /home/$USER/anaconda3/envs/vae/bin/python lang_model_run.py
-#env CUDA_VISIBLE_DEVICES=8 /home/$USER/anaconda3/envs/vae/bin/python experiment.py
+#env CUDA_VISIBLE_DEVICES=0 /home/$USER/anaconda3/envs/vae/bin/python experiment.py

@@ -19,6 +19,7 @@ def cosine_sim_matrix(a, b, eps=1e-8):
 
 class RNN_VAE(nn.Module):
     """
+    Based on code from https://github.com/wiseodd/controlled-text-generation
     1. Hu, Zhiting, et al. "Toward controlled generation of text." ICML. 2017.
     2. Bowman, Samuel R., et al. "Generating sentences from a continuous space." arXiv preprint arXiv:1511.06349 (2015).
     3. Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
