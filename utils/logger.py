@@ -33,7 +33,6 @@ class Logger:
     def save_tags_and_script(self, tags):
         with open(f'{self.dir_path}/tags.txt', 'w') as fp:
             fp.write(tags)
-
         try:
             shutil.copy('experiment.py', self.dir_path)
         except Exception as e:
@@ -41,18 +40,6 @@ class Logger:
             print(e)
 
     def save_progress(self, epoch):
-        # to chyba niepotrzebne
-        # train_losses = {
-        #     "Loss": self.train_eval.kl_losses,
-        #     "KL": self.train_eval.recon_losses,
-        #     "Recon": self.train_eval.losses
-        # }
-        # val_losses = {
-        #     "Loss": self.val_eval.kl_losses,
-        #     "KL": self.val_eval.recon_losses,
-        #     "Recon": self.val_eval.losses
-        # }
-        # chyba wystarczy mean loss epoki, nie potrzebujemy per batch
         recon_loss, kl_loss, loss = self.train_eval.mean_losses()
         self.train_losses_desc[epoch] = {
             "name": 'train',
@@ -139,14 +126,14 @@ class Logger:
     def save_and_log_sentences(self, epoch, rec_train, rec_val, rec_prior):
         print('train reconstruction (no dropout)')
         for d in rec_train:
-            print('T: ', d['target'])
-            print('R: ', d['reconstruction'])
-            print('S: ', d['z_sample'])
+            print('T: ', d.get('target', None))
+            print('R: ', d.get('reconstruction', None))
+            print('S: ', d.get('z_sample', None))
         print('val reconstruction')
         for d in rec_val:
-            print('T: ', d['target'])
-            print('R: ', d['reconstruction'])
-            print('S: ', d['z_sample'])
+            print('T: ', d.get('target', None))
+            print('R: ', d.get('reconstruction', None))
+            print('S: ', d.get('z_sample', None))
         print('Random sentences from prior')
         for txt in rec_prior:
             print(txt)
@@ -158,5 +145,5 @@ class Logger:
         with open(f'{self.dir_path}/generated_sentences.json', 'w') as fp:
             json.dump(self.generated_sentences, fp, indent=2)
 
-    def load_model(path):
-        return model.load_state_dict(torch.load(path))
+    def load_model(self, path):
+        return self.model.load_state_dict(torch.load(path))
